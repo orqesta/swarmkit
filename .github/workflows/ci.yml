@@ -1,43 +1,63 @@
-name: ci
+name: Orqesta SwarmKit CI
 
 on:
+  pull_request:
   push:
     branches:
       - master
-      - main
-  pull_request:
+  workflow_dispatch:
 
-env:
-  DOCKER_SWARMKIT_USE_CONTAINER: 1
-  IMAGE_NAME: moby/swarmkit
+concurrency:
+  group: orqesta-swarmkit-ci-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
+env:
+  DOCKER_SWARMKIT_USE_CONTAINER: "1"
+  IMAGE_NAME: orqesta/swarmkit
+
 jobs:
-  build-dev:
+  stop-first-regression:
+    name: Stop-first grace period regression
     runs-on: ubuntu-22.04
+    timeout-minutes: 30
     steps:
-      -
-        name: Checkout
+      - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-      -
-        name: Set up Docker Buildx
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Test stop-first grace period
+        run: go test -mod=vendor -run '^TestUpdaterStopGracePeriod$' -count=1 ./manager/orchestrator/update
+
+  build-dev:
+    name: Build development image
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
-      -
-        name: Build dev image
+      - name: Build development image
         uses: docker/bake-action@6614cfa25eff9a0b2b2697efb0b6159e7680d584 # v7.2.0
         with:
           targets: dev
           set: |
-            *.cache-from=type=gha,scope=dev${{ matrix.mode }}
-            *.cache-to=type=gha,scope=dev${{ matrix.mode }},mode=max
+            *.cache-from=type=gha,scope=dev
+            *.cache-to=type=gha,scope=dev,mode=max
             *.output=type=cacheonly
 
   test:
+    name: ${{ matrix.target }}
     runs-on: ubuntu-22.04
     needs:
       - build-dev
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -46,29 +66,17 @@ jobs:
           - coverage-integration
           - swarmd-tests
     steps:
-      -
-        name: Checkout
+      - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           fetch-depth: 0
-      -
-        name: Set up Docker Buildx
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
-      -
-        name: Build dev image
+      - name: Build development image
         uses: docker/bake-action@6614cfa25eff9a0b2b2697efb0b6159e7680d584 # v7.2.0
         with:
           targets: dev
           set: |
             *.cache-from=type=gha,scope=dev
-      -
-        name: Test
-        run: |
-          make IMAGE_NAME=$IMAGE_NAME ${{ matrix.target }}
-      -
-        if: ${{ startsWith(matrix.target, 'coverage') }}
-        name: Send to Codecov
-        uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6.0.1
-        with:
-          env_vars: RUNNER_OS
-          flags: ${{ matrix.target }}
+      - name: Run tests
+        run: make IMAGE_NAME="$IMAGE_NAME" "${{ matrix.target }}"
