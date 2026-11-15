@@ -4,7 +4,6 @@ import (
 	"context"
 	"net"
 
-	"github.com/docker/go-events"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
@@ -33,7 +32,7 @@ var _ = Describe("Manager", func() {
 
 		// watch contains an event channel, which is produced by
 		// store.ViewAndWatch.
-		watch chan events.Event
+		watch <-chan any
 		// watchCancel cancels the watch operation.
 		watchCancel func()
 
@@ -48,7 +47,7 @@ var _ = Describe("Manager", func() {
 	// passEvents allows us to do an end-run around the Run method of the
 	// volume manager, letting us turn a typically asynchronous operation into
 	// a synchronous one for the purpose of testing.
-	passEvents := func(match func(events.Event) bool) {
+	passEvents := func(match func(any) bool) {
 		for ev := range watch {
 			vm.handleEvent(ev)
 			if match(ev) {
@@ -390,7 +389,7 @@ var _ = Describe("Manager", func() {
 			})
 			Expect(err).ToNot(HaveOccurred())
 
-			passEvents(func(ev events.Event) bool {
+			passEvents(func(ev any) bool {
 				e, ok := ev.(api.EventCreateNode)
 				return ok && e.Node.ID == "nodeID3"
 			})
@@ -425,7 +424,7 @@ var _ = Describe("Manager", func() {
 			})
 			Expect(err).ToNot(HaveOccurred())
 
-			passEvents(func(ev events.Event) bool {
+			passEvents(func(ev any) bool {
 				e, ok := ev.(api.EventUpdateNode)
 				return ok && e.Node.ID == "nodeIDextra"
 			})
@@ -450,7 +449,7 @@ var _ = Describe("Manager", func() {
 			})
 			Expect(err).ToNot(HaveOccurred())
 
-			passEvents(func(ev events.Event) bool {
+			passEvents(func(ev any) bool {
 				_, ok := ev.(api.EventDeleteNode)
 				return ok
 			})

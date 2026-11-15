@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/go-events"
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/manager/orchestrator/testutils"
@@ -63,7 +62,7 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 		// typical go pattern: infinite for loop in a goroutine, exits on
 		// ctx.Done
 		for {
-			var e events.Event
+			var e any
 			select {
 			case e = <-watchUpdate:
 			case <-ctx.Done():
@@ -231,7 +230,7 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 
 	// Should get to the ROLLBACK_STARTED state
 	for {
-		var e events.Event
+		var e any
 		select {
 		case e = <-watchServiceUpdate:
 		case <-ctx.Done():
@@ -266,7 +265,7 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 
 	// Should end up in ROLLBACK_COMPLETED state
 	for {
-		var e events.Event
+		var e any
 		select {
 		case e = <-watchServiceUpdate:
 			t.Log("service was updated")
@@ -317,7 +316,7 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 
 	// Should get to the ROLLBACK_STARTED state
 	for {
-		var e events.Event
+		var e any
 		select {
 		case e = <-watchServiceUpdate:
 		case <-ctx.Done():
@@ -348,7 +347,7 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 	case api.UpdateConfig_PAUSE:
 		// Should end up in ROLLBACK_PAUSED state
 		for {
-			var e events.Event
+			var e any
 			select {
 			case e = <-watchServiceUpdate:
 			case <-ctx.Done():
@@ -362,7 +361,7 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 	case api.UpdateConfig_CONTINUE:
 		// Should end up in ROLLBACK_COMPLETE state
 		for {
-			var e events.Event
+			var e any
 			select {
 			case e = <-watchServiceUpdate:
 			case <-ctx.Done():

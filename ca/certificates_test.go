@@ -24,7 +24,6 @@ import (
 	cfcsr "github.com/cloudflare/cfssl/csr"
 	"github.com/cloudflare/cfssl/helpers"
 	"github.com/cloudflare/cfssl/initca"
-	"github.com/docker/go-events"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/ca"
 	cautils "github.com/moby/swarmkit/v2/ca/testutils"
@@ -41,7 +40,7 @@ import (
 )
 
 func init() {
-	ca.RenewTLSExponentialBackoff = events.ExponentialBackoffConfig{
+	ca.RenewTLSExponentialBackoff = ca.RenewalBackoffConfig{
 		Base:   250 * time.Millisecond,
 		Factor: 250 * time.Millisecond,
 		Max:    1 * time.Hour,

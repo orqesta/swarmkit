@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/clock/fakeclock"
-	"github.com/docker/go-events"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/ca"
 	cautils "github.com/moby/swarmkit/v2/ca/testutils"
@@ -74,7 +73,7 @@ func (n *TestNode) GetMemberlist() map[uint64]*api.RaftMember {
 	return n.Node.GetMemberlist()
 }
 
-func (n *TestNode) SubscribeLeadership() (q chan events.Event, cancel func()) {
+func (n *TestNode) SubscribeLeadership() (q <-chan any, cancel func()) {
 	return n.Node.SubscribeLeadership()
 }
 

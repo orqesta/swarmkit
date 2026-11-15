@@ -5,7 +5,6 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/docker/go-events"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/manager/allocator/networkallocator"
 	"github.com/moby/swarmkit/v2/manager/state"
@@ -56,7 +55,7 @@ type allocActor struct {
 
 	// Action routine which is called for every event that the
 	// allocator received.
-	action func(context.Context, events.Event)
+	action func(context.Context, any)
 
 	// Init routine which is called during the initialization of
 	// the allocator.
@@ -142,7 +141,7 @@ func (a *Allocator) Stop() {
 	<-a.doneChan
 }
 
-func (a *Allocator) init(ctx context.Context, aa *allocActor) (<-chan events.Event, func(), error) {
+func (a *Allocator) init(ctx context.Context, aa *allocActor) (<-<-chan any, func(), error) {
 	watch, watchCancel := state.Watch(a.store.WatchQueue(),
 		api.EventCreateNetwork{},
 		api.EventDeleteNetwork{},
@@ -166,7 +165,7 @@ func (a *Allocator) init(ctx context.Context, aa *allocActor) (<-chan events.Eve
 	return watch, watchCancel, nil
 }
 
-func (a *Allocator) run(ctx context.Context, aa allocActor, watch <-chan events.Event) {
+func (a *Allocator) run(ctx context.Context, aa allocActor, watch <-<-chan any) {
 	for {
 		select {
 		case ev, ok := <-watch:

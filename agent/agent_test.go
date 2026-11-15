@@ -14,7 +14,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
-	events "github.com/docker/go-events"
 	agentutils "github.com/moby/swarmkit/v2/agent/testutils"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/ca"
@@ -263,7 +262,7 @@ func TestNodeDescriptionsEqual(t *testing.T) {
 // when the node description changes, the session is restarted and propagated up to the dispatcher.
 // the node description includes the FIPSness of the agent.
 func TestSessionRestartedOnNodeDescriptionChange(t *testing.T) {
-	tlsCh := make(chan events.Event, 1)
+	tlsCh := make(chan any, 1)
 	defer close(tlsCh)
 	tester := agentTestEnv(t, nil, tlsCh)
 	tester.agent.config.FIPS = true // start out with the agent in FIPS-enabled mode
@@ -329,7 +328,7 @@ func TestSessionRestartedOnNodeDescriptionChange(t *testing.T) {
 // If the dispatcher returns an error, if it times out, or if it's unreachable, no matter
 // what the agent attempts to reconnect and rebuild a new session.
 func TestSessionReconnectsIfDispatcherErrors(t *testing.T) {
-	tlsCh := make(chan events.Event, 1)
+	tlsCh := make(chan any, 1)
 	defer close(tlsCh)
 
 	tester := agentTestEnv(t, nil, tlsCh)
@@ -423,7 +422,7 @@ func (t *testSessionTracker) Stats() (int, int, int) {
 // If we pass a session tracker, and OnSessionClosed returns an error, the agent should exit with that error
 // as opposed to rebuilding
 func TestAgentExitsBasedOnSessionTracker(t *testing.T) {
-	tlsCh := make(chan events.Event, 1)
+	tlsCh := make(chan any, 1)
 	defer close(tlsCh)
 	tester := agentTestEnv(t, nil, tlsCh)
 	defer tester.cleanup()
@@ -466,7 +465,7 @@ func TestAgentExitsBasedOnSessionTracker(t *testing.T) {
 
 // If we pass a session tracker, established sessions get tracked.
 func TestAgentRegistersSessionsWithSessionTracker(t *testing.T) {
-	tlsCh := make(chan events.Event, 1)
+	tlsCh := make(chan any, 1)
 	defer close(tlsCh)
 	tester := agentTestEnv(t, nil, tlsCh)
 	defer tester.cleanup()
@@ -524,7 +523,7 @@ func (a *agentTester) StartAgent(t *testing.T) func() {
 	}
 }
 
-func agentTestEnv(t *testing.T, nodeChangeCh chan *NodeChanges, tlsChangeCh chan events.Event) *agentTester {
+func agentTestEnv(t *testing.T, nodeChangeCh chan *NodeChanges, tlsChangeCh <-chan any) *agentTester {
 	var cleanup []func()
 	tc := cautils.NewTestCA(t)
 	cleanup = append(cleanup, tc.Stop)

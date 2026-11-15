@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/go-events"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/api/genericresource"
 	"github.com/moby/swarmkit/v2/identity"
@@ -2829,7 +2828,7 @@ watchShutdown:
 	}
 }
 
-func watchAssignmentFailure(t *testing.T, watch chan events.Event) *api.Task {
+func watchAssignmentFailure(t *testing.T, watch <-chan any) *api.Task {
 	for {
 		select {
 		case event := <-watch:
@@ -2844,7 +2843,7 @@ func watchAssignmentFailure(t *testing.T, watch chan events.Event) *api.Task {
 	}
 }
 
-func watchAssignment(t *testing.T, watch chan events.Event) *api.Task {
+func watchAssignment(t *testing.T, watch <-chan any) *api.Task {
 	t.Helper()
 	for {
 		select {

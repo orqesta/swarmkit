@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"github.com/docker/go-events"
 	"github.com/moby/swarmkit/v2/agent/exec"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/connectionbroker"
@@ -36,7 +35,7 @@ type Config struct {
 	NotifyNodeChange chan<- *NodeChanges
 
 	// NotifyTLSChange channel sends new TLS information changes, which can cause a session to restart
-	NotifyTLSChange <-chan events.Event
+	NotifyTLSChange <-<-chan any
 
 	// Credentials is credentials for grpc connection to manager.
 	Credentials credentials.TransportCredentials

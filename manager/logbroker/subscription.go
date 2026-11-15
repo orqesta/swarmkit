@@ -6,7 +6,6 @@ import (
 	"strings"
 	"sync"
 
-	events "github.com/docker/go-events"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/moby/swarmkit/v2/manager/state"
@@ -199,7 +198,7 @@ func (s *subscription) match() {
 	})
 }
 
-func (s *subscription) watch(ch <-chan events.Event) error {
+func (s *subscription) watch(ch <-<-chan any) error {
 	selector := s.message.Selector
 
 	matchTasks := map[string]struct{}{}

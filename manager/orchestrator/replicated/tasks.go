@@ -3,7 +3,6 @@ package replicated
 import (
 	"context"
 
-	"github.com/docker/go-events"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/moby/swarmkit/v2/manager/orchestrator"
@@ -20,7 +19,7 @@ func (r *Orchestrator) initTasks(ctx context.Context, readTx store.ReadTx) error
 	return taskinit.CheckTasks(ctx, r.store, readTx, r, r.restarts)
 }
 
-func (r *Orchestrator) handleTaskEvent(ctx context.Context, event events.Event) {
+func (r *Orchestrator) handleTaskEvent(ctx context.Context, event any) {
 	switch v := event.(type) {
 	case api.EventDeleteNode:
 		r.restartTasksByNodeID(ctx, v.Node.ID)

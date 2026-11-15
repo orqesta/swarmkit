@@ -1,197 +1,126 @@
+// Package watch exposes ordered in-process observations of SwarmKit state.
+// All notifications use the local transport from jmeiracorbal/go-events.
 package watch
 
 import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
 
-	"github.com/docker/go-events"
-	"github.com/moby/swarmkit/v2/watch/queue"
+	"github.com/jmeiracorbal/go-events/adapters/local"
 )
 
-// ChannelSinkGenerator is a constructor of sinks that eventually lead to a
-// channel.
-type ChannelSinkGenerator interface {
-	NewChannelSink() (events.Sink, *events.Channel)
-}
+const topic = "swarmkit.state"
 
-// Queue is the structure used to publish events and watch for them.
+// Queue is a collection of filtered subscribers of one local event bus.
+// It does not persist state, schedule tasks or introduce another bus.
 type Queue struct {
-	sinkGen ChannelSinkGenerator
-	// limit is the max number of items to be held in memory for a watcher
-	limit       uint64
-	mu          sync.Mutex
-	broadcast   *events.Broadcaster
-	cancelFuncs map[events.Sink]func()
-
-	// closeOutChan indicates whether the watchers' channels should be closed
-	// when a watcher queue reaches its limit or when the Close method of the
-	// sink is called.
-	closeOutChan bool
+	mu      sync.Mutex
+	bus     *local.Bus
+	watches map[*local.ValueWatcher]struct{}
+	limit   int
+	closed  bool
 }
 
-// NewQueue creates a new publish/subscribe queue which supports watchers.
-// The channels that it will create for subscriptions will have the buffer
-// size specified by buffer.
+// NewQueue initializes a local subscription queue.
 func NewQueue(options ...func(*Queue) error) *Queue {
-	// Create a queue with the default values
-	q := &Queue{
-		sinkGen:      &dropErrClosedChanGen{},
-		broadcast:    events.NewBroadcaster(),
-		cancelFuncs:  make(map[events.Sink]func()),
-		limit:        0,
-		closeOutChan: false,
-	}
-
+	q := &Queue{bus: local.New(), watches: make(map[*local.ValueWatcher]struct{})}
 	for _, option := range options {
-		err := option(q)
-		if err != nil {
-			panic(fmt.Sprintf("Failed to apply options to queue: %s", err))
+		if err := option(q); err != nil {
+			panic(fmt.Sprintf("invalid watch queue option: %s", err))
 		}
 	}
-
 	return q
 }
 
-// WithTimeout returns a functional option for a queue that sets a write timeout
-func WithTimeout(timeout time.Duration) func(*Queue) error {
-	return func(q *Queue) error {
-		q.sinkGen = NewTimeoutDropErrSinkGen(timeout)
-		return nil
-	}
-}
-
-// WithCloseOutChan returns a functional option for a queue whose watcher
-// channel is closed when no more events are expected to be sent to the watcher.
-func WithCloseOutChan() func(*Queue) error {
-	return func(q *Queue) error {
-		q.closeOutChan = true
-		return nil
-	}
-}
-
-// WithLimit returns a functional option for a queue with a max size limit.
+// WithLimit bounds not-yet-delivered events per watcher. Zero is unlimited.
+// A full subscriber is terminated and Publish returns an explicit error.
 func WithLimit(limit uint64) func(*Queue) error {
 	return func(q *Queue) error {
-		q.limit = limit
+		if limit > uint64(^uint(0)>>1) {
+			return fmt.Errorf("watch limit %d exceeds platform capacity", limit)
+		}
+		q.limit = int(limit)
 		return nil
 	}
 }
 
-// Watch returns a channel which will receive all items published to the
-// queue from this point, until cancel is called.
-func (q *Queue) Watch() (eventq chan events.Event, cancel func()) {
+// Watch subscribes to subsequent events until cancel is called.
+func (q *Queue) Watch() (<-chan any, func()) {
 	return q.CallbackWatch(nil)
 }
 
-// WatchContext returns a channel where all items published to the queue will
-// be received. The channel will be closed when the provided context is
-// cancelled.
-func (q *Queue) WatchContext(ctx context.Context) (eventq chan events.Event) {
-	return q.CallbackWatchContext(ctx, nil)
+// WatchContext closes the observation when its context is cancelled.
+func (q *Queue) WatchContext(ctx context.Context) <-chan any {
+	stream, _ := q.register(ctx, nil)
+	return stream
 }
 
-// CallbackWatch returns a channel which will receive all events published to
-// the queue from this point that pass the check in the provided callback
-// function. The returned cancel function will stop the flow of events and
-// close the channel.
-func (q *Queue) CallbackWatch(matcher events.Matcher) (eventq chan events.Event, cancel func()) {
-	chanSink, ch := q.sinkGen.NewChannelSink()
-	lq := queue.NewLimitQueue(chanSink, q.limit)
-	sink := events.Sink(lq)
+// CallbackWatch subscribes to events accepted by matcher.
+func (q *Queue) CallbackWatch(matcher func(any) bool) (<-chan any, func()) {
+	return q.register(context.Background(), matcher)
+}
 
-	if matcher != nil {
-		sink = events.NewFilter(sink, matcher)
-	}
+// CallbackWatchContext subscribes with cancellation and event filtering.
+func (q *Queue) CallbackWatchContext(ctx context.Context, matcher func(any) bool) <-chan any {
+	stream, _ := q.register(ctx, matcher)
+	return stream
+}
 
-	q.broadcast.Add(sink)
-
-	cancelFunc := func() {
-		q.broadcast.Remove(sink)
-		ch.Close()
-		sink.Close()
-	}
-
-	externalCancelFunc := func() {
-		q.mu.Lock()
-		cancelFunc := q.cancelFuncs[sink]
-		delete(q.cancelFuncs, sink)
-		q.mu.Unlock()
-
-		if cancelFunc != nil {
-			cancelFunc()
-		}
-	}
-
+func (q *Queue) register(ctx context.Context, matcher func(any) bool) (<-chan any, func()) {
 	q.mu.Lock()
-	q.cancelFuncs[sink] = cancelFunc
+	if q.closed {
+		q.mu.Unlock()
+		ch := make(chan any)
+		close(ch)
+		return ch, func() {}
+	}
+	w, err := q.bus.WatchValues(ctx, topic, matcher, nil, q.limit)
+	if err != nil {
+		q.mu.Unlock()
+		panic(fmt.Sprintf("cannot register SwarmKit watcher: %s", err))
+	}
+	q.watches[w] = struct{}{}
 	q.mu.Unlock()
 
-	// If the output channel shouldn't be closed and the queue is limitless,
-	// there's no need for an additional goroutine.
-	if !q.closeOutChan && q.limit == 0 {
-		return ch.C, externalCancelFunc
+	var once sync.Once
+	cancel := func() {
+		once.Do(func() {
+			_ = w.Close()
+			q.mu.Lock()
+			delete(q.watches, w)
+			q.mu.Unlock()
+		})
 	}
-
-	outChan := make(chan events.Event)
 	go func() {
-		for {
-			select {
-			case <-ch.Done():
-				// Close the output channel if the ChannelSink is Done for any
-				// reason. This can happen if the cancelFunc is called
-				// externally or if it has been closed by a wrapper sink, such
-				// as the TimeoutSink.
-				if q.closeOutChan {
-					close(outChan)
-				}
-				externalCancelFunc()
-				return
-			case <-lq.Full():
-				// Close the output channel and tear down the Queue if the
-				// LimitQueue becomes full.
-				if q.closeOutChan {
-					close(outChan)
-				}
-				externalCancelFunc()
-				return
-			case event := <-ch.C:
-				outChan <- event
-			}
-		}
-	}()
-
-	return outChan, externalCancelFunc
-}
-
-// CallbackWatchContext returns a channel where all items published to the queue will
-// be received. The channel will be closed when the provided context is
-// cancelled.
-func (q *Queue) CallbackWatchContext(ctx context.Context, matcher events.Matcher) (eventq chan events.Event) {
-	c, cancel := q.CallbackWatch(matcher)
-	go func() {
-		<-ctx.Done()
+		<-w.Done()
 		cancel()
 	}()
-	return c
+	return w.Events(), cancel
 }
 
-// Publish adds an item to the queue.
-func (q *Queue) Publish(item events.Event) {
-	q.broadcast.Write(item)
+// Publish dispatches a native Go value to the current observers. A saturated
+// subscriber closes and returns an error; events are never silently dropped.
+func (q *Queue) Publish(item any) error {
+	return q.bus.PublishValue(context.Background(), topic, item)
 }
 
-// Close closes the queue and frees the associated resources.
+// Close ends all observations and prevents further publishing.
 func (q *Queue) Close() error {
-	// Make sure all watchers have been closed to avoid a deadlock when
-	// closing the broadcaster.
 	q.mu.Lock()
-	for _, cancelFunc := range q.cancelFuncs {
-		cancelFunc()
+	if q.closed {
+		q.mu.Unlock()
+		return nil
 	}
-	q.cancelFuncs = make(map[events.Sink]func())
+	q.closed = true
+	watches := make([]*local.ValueWatcher, 0, len(q.watches))
+	for watcher := range q.watches {
+		watches = append(watches, watcher)
+	}
+	clear(q.watches)
 	q.mu.Unlock()
-
-	return q.broadcast.Close()
+	for _, watcher := range watches {
+		_ = watcher.Close()
+	}
+	return q.bus.Close()
 }

@@ -15,7 +15,6 @@ import (
 	"time"
 
 	cfconfig "github.com/cloudflare/cfssl/config"
-	events "github.com/docker/go-events"
 	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/credentials"
@@ -269,7 +268,7 @@ func (s *SecurityConfig) UpdateRootCA(rootCA *RootCA) error {
 }
 
 // Watch allows you to set a watch on the security config, in order to be notified of any changes
-func (s *SecurityConfig) Watch() (chan events.Event, func()) {
+func (s *SecurityConfig) Watch() (<-chan any, func()) {
 	return s.queue.Watch()
 }
 

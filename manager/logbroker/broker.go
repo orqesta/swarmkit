@@ -7,7 +7,6 @@ import (
 	"io"
 	"sync"
 
-	"github.com/docker/go-events"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/ca"
 	"github.com/moby/swarmkit/v2/identity"
@@ -164,15 +163,15 @@ func (lb *LogBroker) unregisterSubscription(subscription *subscription) {
 //
 // Subscriptions may fire multiple times and the caller has to protect against
 // dupes.
-func (lb *LogBroker) watchSubscriptions(nodeID string) ([]*subscription, chan events.Event, func()) {
+func (lb *LogBroker) watchSubscriptions(nodeID string) ([]*subscription, <-chan any, func()) {
 	lb.mu.RLock()
 	defer lb.mu.RUnlock()
 
 	// Watch for subscription changes for this node.
-	ch, cancel := lb.subscriptionQueue.CallbackWatch(events.MatcherFunc(func(event events.Event) bool {
+	ch, cancel := lb.subscriptionQueue.CallbackWatch(func(event any) bool {
 		s := event.(*subscription)
 		return s.Contains(nodeID)
-	}))
+	})
 
 	// Grab current subscriptions.
 	var subscriptions []*subscription
@@ -185,14 +184,14 @@ func (lb *LogBroker) watchSubscriptions(nodeID string) ([]*subscription, chan ev
 	return subscriptions, ch, cancel
 }
 
-func (lb *LogBroker) subscribe(id string) (chan events.Event, func()) {
+func (lb *LogBroker) subscribe(id string) (<-chan any, func()) {
 	lb.mu.RLock()
 	defer lb.mu.RUnlock()
 
-	return lb.logQueue.CallbackWatch(events.MatcherFunc(func(event events.Event) bool {
+	return lb.logQueue.CallbackWatch(func(event any) bool {
 		publish := event.(*logMessage)
 		return publish.SubscriptionID == id
-	}))
+	})
 }
 
 func (lb *LogBroker) publish(log *api.PublishLogsMessage) {

@@ -8,7 +8,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/docker/go-events"
 	gogotypes "github.com/gogo/protobuf/types"
 
 	"github.com/moby/swarmkit/v2/api"
@@ -17,7 +16,7 @@ import (
 
 // passEventsUntil is a helper method that calls handleEvent on all events from
 // the orchestrator's watchChan until the provided closure returns True.
-func passEventsUntil(o *Orchestrator, check func(event events.Event) bool) {
+func passEventsUntil(o *Orchestrator, check func(event any) bool) {
 	deadline := time.NewTimer(10 * time.Second)
 	defer deadline.Stop()
 	for {
@@ -133,7 +132,7 @@ var _ = Describe("Jobs RestartSupervisor Integration", func() {
 
 		// pass events again, this time until the TaskUpdate event with the
 		// failed state goes through
-		passEventsUntil(o, func(event events.Event) bool {
+		passEventsUntil(o, func(event any) bool {
 			updateEv, ok := event.(api.EventUpdateTask)
 			return ok && updateEv.Task.Status.State == api.TaskStateFailed
 		})
@@ -193,7 +192,7 @@ var _ = Describe("Jobs RestartSupervisor Integration", func() {
 			// desired state READY. the task delay means this part is async,
 			// but we have a long timeout and a short delay, so the scheduler
 			// shouldn't mess this up.
-			passEventsUntil(o, func(event events.Event) bool {
+			passEventsUntil(o, func(event any) bool {
 				updated, ok := event.(api.EventUpdateTask)
 				return ok &&
 					updated.Task.DesiredState == api.TaskStateCompleted &&
@@ -232,14 +231,14 @@ var _ = Describe("Jobs RestartSupervisor Integration", func() {
 	})
 })
 
-func serviceCreated(service *api.Service) func(events.Event) bool {
-	return func(event events.Event) bool {
+func serviceCreated(service *api.Service) func(any) bool {
+	return func(event any) bool {
 		create, ok := event.(api.EventCreateService)
 		return ok && create.Service.ID == service.ID
 	}
 }
 
-func taskFailed(event events.Event) bool {
+func taskFailed(event any) bool {
 	updated, ok := event.(api.EventUpdateTask)
 	return ok &&
 		updated.Task.Status.State == api.TaskStateFailed &&

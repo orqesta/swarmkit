@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/clock"
-	"github.com/docker/go-events"
 	"github.com/docker/go-metrics"
 	"github.com/gogo/protobuf/proto"
 	"github.com/moby/swarmkit/v2/api"
@@ -1659,7 +1658,7 @@ func (n *Node) ChangesBetween(from, to api.Version) ([]state.Change, error) {
 
 // SubscribePeers subscribes to peer updates in cluster. It sends always full
 // list of peers.
-func (n *Node) SubscribePeers() (q chan events.Event, cancel func()) {
+func (n *Node) SubscribePeers() (q <-chan any, cancel func()) {
 	return n.cluster.PeersBroadcast.Watch()
 }
 
@@ -2033,7 +2032,7 @@ func (n *Node) applyRemoveNode(ctx context.Context, cc raftpb.ConfChange) (err e
 // SubscribeLeadership returns channel to which events about leadership change
 // will be sent in form of raft.LeadershipState. Also cancel func is returned -
 // it should be called when listener is no longer interested in events.
-func (n *Node) SubscribeLeadership() (q chan events.Event, cancel func()) {
+func (n *Node) SubscribeLeadership() (q <-chan any, cancel func()) {
 	return n.leadershipBroadcast.Watch()
 }
 

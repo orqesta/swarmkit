@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/cloudflare/cfssl/helpers"
-	events "github.com/docker/go-events"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/ca"
 	cautils "github.com/moby/swarmkit/v2/ca/testutils"
@@ -47,7 +46,7 @@ func printTrace() {
 }
 
 func TestMain(m *testing.M) {
-	ca.RenewTLSExponentialBackoff = events.ExponentialBackoffConfig{
+	ca.RenewTLSExponentialBackoff = ca.RenewalBackoffConfig{
 		Factor: time.Millisecond * 500,
 		Max:    time.Minute,
 	}

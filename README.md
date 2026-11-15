@@ -12,6 +12,19 @@ Its main benefits are:
 -   **Secure**: Node communication and membership within a *Swarm* are secure out of the box. *SwarmKit* uses mutual TLS for node *authentication*, *role authorization* and *transport encryption*, automating both certificate issuance and rotation.
 -   **Simple**: *SwarmKit* is operationally simple and minimizes infrastructure dependencies. It does not need an external database to operate.
 
+## Orqesta local event transport
+
+This fork publishes in-process state, task, leadership, certificate and log
+notifications through the typed local transport in
+[`jmeiracorbal/go-events`](https://github.com/jmeiracorbal/go-events).
+Watch subscriptions use its bounded, cancellable channel delivery; there is
+no second event broadcaster, legacy sink implementation, or compatibility
+fallback. Events remain native Go values and are not sent to NATS.
+
+Certificate retry jitter is an independent CA concern implemented in
+`ca/backoff.go`, not a responsibility of the event transport. The
+`github.com/docker/go-events` package is no longer used by this fork.
+
 ## Overview
 
 Machines running *SwarmKit* can be grouped together in order to form a *Swarm*, coordinating tasks with each other.

@@ -1,7 +1,6 @@
 package state
 
 import (
-	"github.com/docker/go-events"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/watch"
 )
@@ -12,7 +11,7 @@ type EventCommit struct {
 }
 
 // Matches returns true if this event is a commit event.
-func (e EventCommit) Matches(watchEvent events.Event) bool {
+func (e EventCommit) Matches(watchEvent any) bool {
 	_, ok := watchEvent.(EventCommit)
 	return ok
 }
@@ -59,21 +58,21 @@ func NodeCheckState(n1, n2 *api.Node) bool {
 //			},
 //		},
 //	})
-func Watch(queue *watch.Queue, specifiers ...api.Event) (eventq chan events.Event, cancel func()) {
+func Watch(queue *watch.Queue, specifiers ...api.Event) (eventq <-chan any, cancel func()) {
 	if len(specifiers) == 0 {
 		return queue.Watch()
 	}
 	return queue.CallbackWatch(Matcher(specifiers...))
 }
 
-// Matcher returns an events.Matcher that Matches the specifiers with OR logic.
-func Matcher(specifiers ...api.Event) events.MatcherFunc {
-	return events.MatcherFunc(func(event events.Event) bool {
+// Matcher returns a predicate that Matches the specifiers with OR logic.
+func Matcher(specifiers ...api.Event) func(any) bool {
+	return func(event any) bool {
 		for _, s := range specifiers {
 			if s.Matches(event) {
 				return true
 			}
 		}
 		return false
-	})
+	}
 }

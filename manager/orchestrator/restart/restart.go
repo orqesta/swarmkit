@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/docker/go-events"
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/api/defaults"
@@ -470,7 +469,7 @@ func (r *Supervisor) DelayStart(ctx context.Context, _ store.Tx, oldTask *api.Ta
 	r.delays[newTaskID] = &delayedStart{cancel: cancel, doneCh: doneCh}
 	r.mu.Unlock()
 
-	var watch chan events.Event
+	var watch <-chan any
 	cancelWatch := func() {}
 
 	waitForTask := waitStop && oldTask != nil && oldTask.Status.State <= api.TaskStateRunning

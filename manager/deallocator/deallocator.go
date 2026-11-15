@@ -3,7 +3,6 @@ package deallocator
 import (
 	"context"
 
-	"github.com/docker/go-events"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/moby/swarmkit/v2/manager/state/store"
@@ -267,7 +266,7 @@ func (deallocator *Deallocator) processNetwork(ctx context.Context, tx store.Tx,
 // type of event it is.
 // The boolean part of the return tuple indicates whether anything was actually
 // removed from the store
-func (deallocator *Deallocator) processNewEvent(ctx context.Context, event events.Event) (bool, error) {
+func (deallocator *Deallocator) processNewEvent(ctx context.Context, event any) (bool, error) {
 	switch typedEvent := event.(type) {
 	case api.EventDeleteTask:
 		serviceID := typedEvent.Task.ServiceID

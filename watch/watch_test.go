@@ -2,258 +2,127 @@ package watch
 
 import (
 	"context"
-	"slices"
-	"sync"
+	"errors"
+	"reflect"
 	"testing"
 	"time"
 
-	"github.com/docker/go-events"
-	"github.com/stretchr/testify/require"
+	"github.com/jmeiracorbal/go-events/adapters/local"
 )
 
-func TestTimeoutLimitWatch(t *testing.T) {
-	require := require.New(t)
-	q := NewQueue(WithTimeout(time.Second), WithLimit(5), WithCloseOutChan())
+type observation struct {
+	Name string
+}
+
+func receive(t *testing.T, ch <-chan any) any {
+	t.Helper()
+	select {
+	case value, ok := <-ch:
+		if !ok {
+			t.Fatal("observation channel closed unexpectedly")
+		}
+		return value
+	case <-time.After(3 * time.Second):
+		t.Fatal("timed out waiting for event")
+		return nil
+	}
+}
+
+func TestWatchFanoutFilteringAndCancel(t *testing.T) {
+	q := NewQueue()
+	defer q.Close()
+	all, stopAll := q.Watch()
+	defer stopAll()
+	matched, stopMatched := q.CallbackWatch(func(value any) bool {
+		return value.(observation).Name == "first"
+	})
+	defer stopMatched()
+
+	if err := q.Publish(observation{Name: "first"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := q.Publish(observation{Name: "second"}); err != nil {
+		t.Fatal(err)
+	}
+	if got := []any{receive(t, all), receive(t, all)}; !reflect.DeepEqual(got, []any{
+		observation{Name: "first"}, observation{Name: "second"},
+	}) {
+		t.Fatalf("observation order mismatch: %v", got)
+	}
+	if got := receive(t, matched); got != (observation{Name: "first"}) {
+		t.Fatalf("matcher received wrong notification: %v", got)
+	}
+	stopMatched()
+	select {
+	case _, ok := <-matched:
+		if ok {
+			t.Fatal("cancelled watcher delivered a value")
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("cancelled watcher remained open")
+	}
+}
+
+func TestWatchContextCancellation(t *testing.T) {
+	q := NewQueue()
 	defer q.Close()
 	ctx, cancel := context.WithCancel(context.Background())
-
-	// Cancelling a watcher's context should remove the watcher from the queue and
-	// close its channel.
-	doneChan := make(chan struct{})
-	go func() {
-		events := q.WatchContext(ctx)
-		for range events {
-		}
-		close(doneChan)
-	}()
+	ch := q.WatchContext(ctx)
 	cancel()
-	<-doneChan
+	select {
+	case _, ok := <-ch:
+		if ok {
+			t.Fatal("cancelled watcher must stop")
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("context cancellation not observed")
+	}
+}
 
-	// Test a scenario with a faster write rate than read rate The queue
-	// should eventually fill up and the channel will be closed.
-	readerSleepDuration := 100 * time.Millisecond
-	writerSleepDuration := 10 * time.Millisecond
-
-	events, cancel := q.Watch()
+func TestWatchRejectsOverflow(t *testing.T) {
+	q := NewQueue(WithLimit(1))
+	defer q.Close()
+	ch, cancel := q.Watch()
 	defer cancel()
-
-	receivedChan := make(chan struct{})
-	eventsClosed := make(chan struct{})
-
-	go func() {
-		closed := false
-		for range events {
-			if !closed {
-				close(receivedChan)
-				closed = true
-			}
-			time.Sleep(readerSleepDuration)
-		}
-		close(eventsClosed)
-	}()
-
-	// Publish one event and wait for the watcher to receive it
-	q.Publish("new event")
-	<-receivedChan
-
-	timeoutTimer := time.NewTimer(time.Minute)
-selectLoop:
-	for {
-		select {
-		case <-timeoutTimer.C:
-			require.Fail("Timeout exceeded")
-		case <-time.After(writerSleepDuration):
-			q.Publish("new event")
-		case <-eventsClosed:
-			break selectLoop
+	var overflow error
+	for i := range 30 {
+		if err := q.Publish(i); err != nil {
+			overflow = err
+			break
 		}
 	}
-
-	_, ok := <-events
-	require.False(ok)
-}
-
-func TestWatch(t *testing.T) {
-	// Create a queue
-	q := NewQueue()
-	defer q.Close()
-
-	type testEvent struct {
-		tags []string
-		str  string
+	if !errors.Is(overflow, local.ErrWatchFull) {
+		t.Fatalf("watch queue overflow must reach publisher: %v", overflow)
 	}
-
-	tagFilter := func(t string) events.Matcher {
-		return events.MatcherFunc(func(event events.Event) bool {
-			testEvent := event.(testEvent)
-			return slices.Contains(testEvent.tags, t)
-		})
-	}
-
-	// Create filtered watchers
-	c1, c1cancel := q.CallbackWatch(tagFilter("t1"))
-	defer c1cancel()
-	c2, c2cancel := q.CallbackWatch(tagFilter("t2"))
-	defer c2cancel()
-
-	// Publish items on the queue
-	q.Publish(testEvent{tags: []string{"t1"}, str: "foo"})
-	q.Publish(testEvent{tags: []string{"t2"}, str: "bar"})
-	q.Publish(testEvent{tags: []string{"t1", "t2"}, str: "foobar"})
-	q.Publish(testEvent{tags: []string{"t3"}, str: "baz"})
-
-	if (<-c1).(testEvent).str != "foo" {
-		t.Fatal(`expected "foo" on c1`)
-	}
-
-	ev := (<-c1).(testEvent)
-	if ev.str != "foobar" {
-		t.Fatal(`expected "foobar" on c1`, ev)
-	}
-	if (<-c2).(testEvent).str != "bar" {
-		t.Fatal(`expected "bar" on c2`)
-	}
-	if (<-c2).(testEvent).str != "foobar" {
-		t.Fatal(`expected "foobar" on c2`)
-	}
-
-	c1cancel()
-
 	select {
-	case _, ok := <-c1:
+	case _, ok := <-ch:
 		if ok {
-			t.Fatal("unexpected value on c1")
+			t.Fatal("overflowed watcher must be closed")
 		}
-	default:
-		// operation does not proceed after cancel
-	}
-
-	q.Publish(testEvent{tags: []string{"t1", "t2"}, str: "foobar"})
-
-	if (<-c2).(testEvent).str != "foobar" {
-		t.Fatal(`expected "foobar" on c2`)
-	}
-
-	c2cancel()
-
-	select {
-	case _, ok := <-c2:
-		if ok {
-			t.Fatal("unexpected value on c2")
-		}
-	default:
-		// operation does not proceed after cancel
+	case <-time.After(3 * time.Second):
+		t.Fatal("overflowed watcher remained open")
 	}
 }
 
-func BenchmarkPublish10(b *testing.B) {
-	benchmarkWatch(b, 10, 1, false)
-}
-
-func BenchmarkPublish100(b *testing.B) {
-	benchmarkWatch(b, 100, 1, false)
-}
-
-func BenchmarkPublish1000(b *testing.B) {
-	benchmarkWatch(b, 1000, 1, false)
-}
-
-func BenchmarkPublish10000(b *testing.B) {
-	benchmarkWatch(b, 10000, 1, false)
-}
-
-func BenchmarkPublish10Listeners4Publishers(b *testing.B) {
-	benchmarkWatch(b, 10, 4, false)
-}
-
-func BenchmarkPublish100Listeners8Publishers(b *testing.B) {
-	benchmarkWatch(b, 100, 8, false)
-}
-
-func BenchmarkPublish1000Listeners4Publishers(b *testing.B) {
-	benchmarkWatch(b, 1000, 4, false)
-}
-
-func BenchmarkPublish1000Listeners64Publishers(b *testing.B) {
-	benchmarkWatch(b, 1000, 64, false)
-}
-
-func BenchmarkWatch10(b *testing.B) {
-	benchmarkWatch(b, 10, 1, true)
-}
-
-func BenchmarkWatch100(b *testing.B) {
-	benchmarkWatch(b, 100, 1, true)
-}
-
-func BenchmarkWatch1000(b *testing.B) {
-	benchmarkWatch(b, 1000, 1, true)
-}
-
-func BenchmarkWatch10000(b *testing.B) {
-	benchmarkWatch(b, 10000, 1, true)
-}
-
-func BenchmarkWatch10Listeners4Publishers(b *testing.B) {
-	benchmarkWatch(b, 10, 4, true)
-}
-
-func BenchmarkWatch100Listeners8Publishers(b *testing.B) {
-	benchmarkWatch(b, 100, 8, true)
-}
-
-func BenchmarkWatch1000Listeners4Publishers(b *testing.B) {
-	benchmarkWatch(b, 1000, 4, true)
-}
-
-func BenchmarkWatch1000Listeners64Publishers(b *testing.B) {
-	benchmarkWatch(b, 1000, 64, true)
-}
-
-func benchmarkWatch(b *testing.B, nlisteners, npublishers int, waitForWatchers bool) {
+func TestWatchCloseIsIdempotent(t *testing.T) {
 	q := NewQueue()
-	defer q.Close()
-	benchmarkWatchForQueue(q, b, nlisteners, npublishers, waitForWatchers)
-}
-
-func benchmarkWatchForQueue(q *Queue, b *testing.B, nlisteners, npublishers int, waitForWatchers bool) {
-	var (
-		watchersAttached  sync.WaitGroup
-		watchersRunning   sync.WaitGroup
-		publishersRunning sync.WaitGroup
-	)
-
-	eventsPerPublisher := b.N / npublishers
-	eventsPerWatcher := eventsPerPublisher * npublishers
-	for range nlisteners {
-		watchersAttached.Add(1)
-		watchersRunning.Go(func() {
-			w, cancel := q.Watch()
-			defer cancel()
-			watchersAttached.Done()
-
-			for range eventsPerWatcher {
-				<-w
-			}
-		})
+	ch, stop := q.Watch()
+	if err := q.Close(); err != nil {
+		t.Fatal(err)
 	}
-
-	// Wait for watchers to be in place before we start publishing events.
-	watchersAttached.Wait()
-
-	b.ResetTimer()
-
-	for range npublishers {
-		publishersRunning.Go(func() {
-			for range eventsPerPublisher {
-				q.Publish("myevent")
-			}
-		})
+	stop()
+	if err := q.Close(); err != nil {
+		t.Fatal(err)
 	}
-
-	publishersRunning.Wait()
-
-	if waitForWatchers {
-		watchersRunning.Wait()
+	select {
+	case _, ok := <-ch:
+		if ok {
+			t.Fatal("closed queue delivered a value")
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("queue was not closed")
+	}
+	if err := q.Publish("after-close"); err == nil {
+		t.Fatal("publishing after close must fail")
 	}
 }

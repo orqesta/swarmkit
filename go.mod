@@ -9,12 +9,12 @@ require (
 	github.com/cloudflare/cfssl v1.6.4
 	github.com/container-storage-interface/spec v1.2.0
 	github.com/distribution/reference v0.5.0
-	github.com/docker/go-events v0.1.0
 	github.com/docker/go-metrics v0.1.0
 	github.com/fernet/fernet-go v0.0.0-20240119011108-303da6aec611
 	github.com/gogo/protobuf v1.3.2
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.1.1
 	github.com/hashicorp/go-memdb v1.3.2
+	github.com/jmeiracorbal/go-events v0.1.2-0.20261115081746-6704f54534c5
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.38.3
 	github.com/opencontainers/go-digest v1.0.0

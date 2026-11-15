@@ -4,7 +4,6 @@ import (
 	"context"
 	"strings"
 
-	"github.com/docker/go-events"
 	metrics "github.com/docker/go-metrics"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/manager/state/store"
@@ -147,7 +146,7 @@ func resetMetrics() {
 }
 
 // handleEvent handles a single incoming cluster event.
-func (c *Collector) handleEvent(event events.Event) {
+func (c *Collector) handleEvent(event any) {
 	switch event.(type) {
 	case api.EventNode:
 		c.handleNodeEvent(event)
@@ -164,7 +163,7 @@ func (c *Collector) handleEvent(event events.Event) {
 	}
 }
 
-func (c *Collector) handleNodeEvent(event events.Event) {
+func (c *Collector) handleNodeEvent(event any) {
 	var prevNode, newNode *api.Node
 
 	switch v := event.(type) {
@@ -189,7 +188,7 @@ func (c *Collector) handleNodeEvent(event events.Event) {
 	}
 }
 
-func (c *Collector) handleTaskEvent(event events.Event) {
+func (c *Collector) handleTaskEvent(event any) {
 	var prevTask, newTask *api.Task
 
 	switch v := event.(type) {
@@ -218,7 +217,7 @@ func (c *Collector) handleTaskEvent(event events.Event) {
 	}
 }
 
-func (c *Collector) handleServiceEvent(event events.Event) {
+func (c *Collector) handleServiceEvent(event any) {
 	switch event.(type) {
 	case api.EventCreateService:
 		servicesMetric.Inc(1)
@@ -227,7 +226,7 @@ func (c *Collector) handleServiceEvent(event events.Event) {
 	}
 }
 
-func (c *Collector) handleNetworkEvent(event events.Event) {
+func (c *Collector) handleNetworkEvent(event any) {
 	switch event.(type) {
 	case api.EventCreateNetwork:
 		networksMetric.Inc(1)
@@ -236,7 +235,7 @@ func (c *Collector) handleNetworkEvent(event events.Event) {
 	}
 }
 
-func (c *Collector) handleSecretsEvent(event events.Event) {
+func (c *Collector) handleSecretsEvent(event any) {
 	switch event.(type) {
 	case api.EventCreateSecret:
 		secretsMetric.Inc(1)
@@ -245,7 +244,7 @@ func (c *Collector) handleSecretsEvent(event events.Event) {
 	}
 }
 
-func (c *Collector) handleConfigsEvent(event events.Event) {
+func (c *Collector) handleConfigsEvent(event any) {
 	switch event.(type) {
 	case api.EventCreateConfig:
 		configsMetric.Inc(1)

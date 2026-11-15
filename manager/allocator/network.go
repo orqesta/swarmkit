@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/docker/go-events"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/moby/swarmkit/v2/manager/allocator/networkallocator"
@@ -151,7 +150,7 @@ func (a *Allocator) doNetworkInit(ctx context.Context) (err error) {
 	return a.allocateTasks(ctx, false)
 }
 
-func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
+func (a *Allocator) doNetworkAlloc(ctx context.Context, ev any) {
 	nc := a.netCtx
 
 	switch v := ev.(type) {
@@ -294,7 +293,7 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 	}
 }
 
-func (a *Allocator) doNodeAlloc(ctx context.Context, ev events.Event) {
+func (a *Allocator) doNodeAlloc(ctx context.Context, ev any) {
 	var (
 		isDelete bool
 		node     *api.Node
@@ -867,7 +866,7 @@ func (a *Allocator) taskCreateNetworkAttachments(t *api.Task, s *api.Service) {
 	taskUpdateNetworks(t, networks)
 }
 
-func (a *Allocator) doTaskAlloc(ctx context.Context, ev events.Event) {
+func (a *Allocator) doTaskAlloc(ctx context.Context, ev any) {
 	var (
 		isDelete bool
 		t        *api.Task

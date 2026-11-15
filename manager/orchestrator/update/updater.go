@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/docker/go-events"
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/api/defaults"
@@ -196,7 +195,7 @@ func (u *Updater) Run(ctx context.Context, slots []orchestrator.Slot) {
 		})
 	}
 
-	var failedTaskWatch chan events.Event
+	var failedTaskWatch <-chan any
 
 	if updateConfig.FailureAction != api.UpdateConfig_CONTINUE {
 		var cancelWatch func()

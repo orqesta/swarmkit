@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/go-events"
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/manager/orchestrator/testutils"
@@ -111,7 +110,7 @@ var (
 	}
 )
 
-func setup(t *testing.T, store *store.MemoryStore, watch chan events.Event) *Orchestrator {
+func setup(t *testing.T, store *store.MemoryStore, watch <-chan any) *Orchestrator {
 	ctx := context.Background()
 	// Start the global orchestrator.
 	global := NewGlobalOrchestrator(store)

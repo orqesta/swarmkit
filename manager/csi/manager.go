@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/docker/go-events"
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/log"
@@ -215,7 +214,7 @@ func (vm *Manager) Stop() {
 	<-vm.doneChan
 }
 
-func (vm *Manager) handleEvent(ev events.Event) {
+func (vm *Manager) handleEvent(ev any) {
 	switch e := ev.(type) {
 	case api.EventCreateVolume:
 		vm.enqueueVolume(e.Volume.ID)

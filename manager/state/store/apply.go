@@ -3,14 +3,13 @@ package store
 import (
 	"errors"
 
-	"github.com/docker/go-events"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/manager/state"
 )
 
 // Apply takes an item from the event stream of one Store and applies it to
 // a second Store.
-func Apply(store *MemoryStore, item events.Event) (err error) {
+func Apply(store *MemoryStore, item any) (err error) {
 	return store.Update(func(tx Tx) error {
 		switch v := item.(type) {
 		case api.EventCreateTask:

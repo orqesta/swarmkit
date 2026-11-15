@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	events "github.com/docker/go-events"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/identity"
 	"github.com/moby/swarmkit/v2/manager/state"
@@ -1584,7 +1583,7 @@ func TestStoreSaveRestore(t *testing.T) {
 
 waitForAllEvents:
 	for {
-		var update events.Event
+		var update any
 		select {
 		case update = <-watcher:
 		case <-timeout:

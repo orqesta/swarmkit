@@ -4,7 +4,6 @@ import (
 	"context"
 	"sync"
 
-	"github.com/docker/go-events"
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/log"
@@ -60,7 +59,7 @@ type Orchestrator struct {
 	checkTasksFunc func(context.Context, *store.MemoryStore, store.ReadTx, taskinit.InitHandler, restart.SupervisorInterface) error
 
 	// the watchChan and watchCancel provide the event stream
-	watchChan   chan events.Event
+	watchChan   <-chan any
 	watchCancel func()
 }
 
@@ -190,7 +189,7 @@ func (o *Orchestrator) run(ctx context.Context) {
 // reconciler as needed. by handling the event logic in this function, we can
 // make an end-run around the run-loop and avoid being at the mercy of the go
 // scheduler when testing the orchestrator.
-func (o *Orchestrator) handleEvent(ctx context.Context, event events.Event) {
+func (o *Orchestrator) handleEvent(ctx context.Context, event any) {
 	var (
 		service *api.Service
 		task    *api.Task

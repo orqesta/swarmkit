@@ -15,7 +15,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 
-	"github.com/docker/go-events"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/ca"
 	cautils "github.com/moby/swarmkit/v2/ca/testutils"
@@ -55,7 +54,7 @@ type testCluster struct {
 	mu            sync.Mutex
 	addr          string
 	store         *store.MemoryStore
-	subscriptions map[string]chan events.Event
+	subscriptions map[string]chan any
 	peers         []*api.Peer
 	members       map[uint64]*api.RaftMember
 }
@@ -64,7 +63,7 @@ func newTestCluster(addr string, s *store.MemoryStore) *testCluster {
 	return &testCluster{
 		addr:          addr,
 		store:         s,
-		subscriptions: make(map[string]chan events.Event),
+		subscriptions: make(map[string]chan any),
 		peers: []*api.Peer{
 			{
 				Addr:   addr,
@@ -86,10 +85,10 @@ func (t *testCluster) GetMemberlist() map[uint64]*api.RaftMember {
 	return t.members
 }
 
-func (t *testCluster) SubscribePeers() (chan events.Event, func()) {
+func (t *testCluster) SubscribePeers() (<-chan any, func()) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	ch := make(chan events.Event, 1)
+	ch := make(chan any, 1)
 	id := identity.NewID()
 	t.subscriptions[id] = ch
 	ch <- t.peers

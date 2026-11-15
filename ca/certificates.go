@@ -25,7 +25,6 @@ import (
 	cflog "github.com/cloudflare/cfssl/log"
 	cfsigner "github.com/cloudflare/cfssl/signer"
 	"github.com/cloudflare/cfssl/signer/local"
-	"github.com/docker/go-events"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/ca/pkcs8"
 	"github.com/moby/swarmkit/v2/connectionbroker"
@@ -814,7 +813,7 @@ func GetRemoteSignedCertificate(ctx context.Context, csr []byte, rootCAPool *x50
 	}
 
 	statusRequest := &api.NodeCertificateStatusRequest{NodeID: issueResponse.NodeID}
-	expBackoff := events.NewExponentialBackoff(events.ExponentialBackoffConfig{
+	expBackoff := newRenewalBackoff(RenewalBackoffConfig{
 		Base:   time.Second,
 		Factor: time.Second,
 		Max:    30 * time.Second,
@@ -864,12 +863,12 @@ func GetRemoteSignedCertificate(ctx context.Context, csr []byte, rootCAPool *x50
 
 		// If NodeCertificateStatus timed out, we're still pending, the issuance failed, or
 		// the state is unknown let's continue trying after an exponential backoff
-		expBackoff.Failure(nil, nil)
+		expBackoff.Failure()
 		select {
 		case <-ctx.Done():
 			conn.Close(true)
 			return nil, err
-		case <-time.After(expBackoff.Proceed(nil)):
+		case <-time.After(expBackoff.Next()):
 		}
 	}
 }

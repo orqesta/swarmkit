@@ -11,7 +11,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/docker/go-events"
 	"github.com/docker/go-metrics"
 	gogotypes "github.com/gogo/protobuf/types"
 	memdb "github.com/hashicorp/go-memdb"
@@ -889,7 +888,7 @@ func (s *MemoryStore) WatchQueue() *watch.Queue {
 // released with watch.StopWatch when it is no longer needed. The channel is
 // guaranteed to get all events after the moment of the snapshot, and only
 // those events.
-func ViewAndWatch(store *MemoryStore, cb func(ReadTx) error, specifiers ...api.Event) (watch chan events.Event, cancel func(), err error) {
+func ViewAndWatch(store *MemoryStore, cb func(ReadTx) error, specifiers ...api.Event) (watch <-chan any, cancel func(), err error) {
 	// Using Update to lock the store and guarantee consistency between
 	// the watcher and the the state seen by the callback. snapshotReadTx
 	// exposes this Tx as a ReadTx so the callback can't modify it.
@@ -920,7 +919,7 @@ func ViewAndWatch(store *MemoryStore, cb func(ReadTx) error, specifiers ...api.E
 //
 // The watch channel must be released with watch.StopWatch when it is no
 // longer needed.
-func WatchFrom(store *MemoryStore, version *api.Version, specifiers ...api.Event) (chan events.Event, func(), error) {
+func WatchFrom(store *MemoryStore, version *api.Version, specifiers ...api.Event) (<-chan any, func(), error) {
 	if version == nil {
 		ch, cancel := state.Watch(store.WatchQueue(), specifiers...)
 		return ch, cancel, nil
@@ -932,7 +931,7 @@ func WatchFrom(store *MemoryStore, version *api.Version, specifiers ...api.Event
 
 	var (
 		curVersion  *api.Version
-		watch       chan events.Event
+		watch       <-chan any
 		cancelWatch func()
 	)
 	// Using Update to lock the store
@@ -960,14 +959,16 @@ func WatchFrom(store *MemoryStore, version *api.Version, specifiers ...api.Event
 		return nil, nil, err
 	}
 
-	ch := make(chan events.Event)
+	ch := make(chan any)
 	stop := make(chan struct{})
+	var stopOnce sync.Once
 	cancel := func() {
-		close(stop)
+		stopOnce.Do(func() { close(stop) })
 	}
 
 	go func() {
 		defer cancelWatch()
+		defer close(ch)
 
 		matcher := state.Matcher(specifiers...)
 		for _, change := range changelist {
@@ -984,8 +985,15 @@ func WatchFrom(store *MemoryStore, version *api.Version, specifiers ...api.Event
 			select {
 			case <-stop:
 				return
-			case e := <-watch:
-				ch <- e
+			case e, ok := <-watch:
+				if !ok {
+					return
+				}
+				select {
+				case ch <- e:
+				case <-stop:
+					return
+				}
 			}
 		}
 	}()

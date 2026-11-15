@@ -4,7 +4,6 @@ import (
 	"context"
 	"sort"
 
-	"github.com/docker/go-events"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/moby/swarmkit/v2/manager/orchestrator"
@@ -44,7 +43,7 @@ func (r *Orchestrator) initServices(readTx store.ReadTx) error {
 	return nil
 }
 
-func (r *Orchestrator) handleServiceEvent(ctx context.Context, event events.Event) {
+func (r *Orchestrator) handleServiceEvent(ctx context.Context, event any) {
 	switch v := event.(type) {
 	case api.EventDeleteService:
 		if !orchestrator.IsReplicatedService(v.Service) {

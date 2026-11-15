@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/go-events"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/manager/allocator/networkallocator"
 	"github.com/moby/swarmkit/v2/manager/state"
@@ -2072,7 +2071,7 @@ func getWatchTimeout(expectTimeout bool) time.Duration {
 	return 5 * time.Second
 }
 
-func watchNode(t *testing.T, watch chan events.Event, expectTimeout bool,
+func watchNode(t *testing.T, watch <-chan any, expectTimeout bool,
 	fn func(t assert.TestingT, originalNode, updatedNode *api.Node, networks []string) bool,
 	originalNode *api.Node,
 	networks []string) {
@@ -2106,7 +2105,7 @@ func watchNode(t *testing.T, watch chan events.Event, expectTimeout bool,
 	}
 }
 
-func watchNetwork(t *testing.T, watch chan events.Event, expectTimeout bool, fn func(t assert.TestingT, n *api.Network) bool) {
+func watchNetwork(t *testing.T, watch <-chan any, expectTimeout bool, fn func(t assert.TestingT, n *api.Network) bool) {
 	for {
 		var network *api.Network
 		select {
@@ -2136,7 +2135,7 @@ func watchNetwork(t *testing.T, watch chan events.Event, expectTimeout bool, fn 
 	}
 }
 
-func watchService(t *testing.T, watch chan events.Event, expectTimeout bool, fn func(t assert.TestingT, n *api.Service) bool) {
+func watchService(t *testing.T, watch <-chan any, expectTimeout bool, fn func(t assert.TestingT, n *api.Service) bool) {
 	for {
 		var service *api.Service
 		select {
@@ -2166,7 +2165,7 @@ func watchService(t *testing.T, watch chan events.Event, expectTimeout bool, fn 
 	}
 }
 
-func watchTask(t *testing.T, s *store.MemoryStore, watch chan events.Event, expectTimeout bool, fn func(t assert.TestingT, s *store.MemoryStore, n *api.Task) bool) {
+func watchTask(t *testing.T, s *store.MemoryStore, watch <-chan any, expectTimeout bool, fn func(t assert.TestingT, s *store.MemoryStore, n *api.Task) bool) {
 	for {
 		var task *api.Task
 		select {

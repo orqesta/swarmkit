@@ -14,7 +14,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/docker/go-events"
 	gmetrics "github.com/docker/go-metrics"
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
@@ -865,7 +864,7 @@ func (m *Manager) getLeaderNodeID() string {
 }
 
 // handleLeadershipEvents handles the is leader event or is follower event.
-func (m *Manager) handleLeadershipEvents(ctx context.Context, leadershipCh chan events.Event) {
+func (m *Manager) handleLeadershipEvents(ctx context.Context, leadershipCh <-chan any) {
 	// get the current leader and save it for logging leadership changes in
 	// this loop
 	oldLeader := m.getLeaderNodeID()

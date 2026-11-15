@@ -5,7 +5,6 @@ package api
 
 import (
 	fmt "fmt"
-	github_com_docker_go_events "github.com/docker/go-events"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
 	github_com_gogo_protobuf_sortkeys "github.com/gogo/protobuf/sortkeys"
@@ -3127,7 +3126,7 @@ type EventCreateNode struct {
 	Checks []NodeCheckFunc
 }
 
-func (e EventCreateNode) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventCreateNode) Matches(apiEvent any) bool {
 	typedEvent, ok := apiEvent.(EventCreateNode)
 	if !ok {
 		return false
@@ -3155,7 +3154,7 @@ type EventUpdateNode struct {
 	Checks  []NodeCheckFunc
 }
 
-func (e EventUpdateNode) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventUpdateNode) Matches(apiEvent any) bool {
 	typedEvent, ok := apiEvent.(EventUpdateNode)
 	if !ok {
 		return false
@@ -3182,7 +3181,7 @@ type EventDeleteNode struct {
 	Checks []NodeCheckFunc
 }
 
-func (e EventDeleteNode) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventDeleteNode) Matches(apiEvent any) bool {
 	typedEvent, ok := apiEvent.(EventDeleteNode)
 	if !ok {
 		return false
@@ -3403,7 +3402,7 @@ type EventCreateService struct {
 	Checks  []ServiceCheckFunc
 }
 
-func (e EventCreateService) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventCreateService) Matches(apiEvent any) bool {
 	typedEvent, ok := apiEvent.(EventCreateService)
 	if !ok {
 		return false
@@ -3431,7 +3430,7 @@ type EventUpdateService struct {
 	Checks     []ServiceCheckFunc
 }
 
-func (e EventUpdateService) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventUpdateService) Matches(apiEvent any) bool {
 	typedEvent, ok := apiEvent.(EventUpdateService)
 	if !ok {
 		return false
@@ -3458,7 +3457,7 @@ type EventDeleteService struct {
 	Checks  []ServiceCheckFunc
 }
 
-func (e EventDeleteService) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventDeleteService) Matches(apiEvent any) bool {
 	typedEvent, ok := apiEvent.(EventDeleteService)
 	if !ok {
 		return false
@@ -3649,7 +3648,7 @@ type EventCreateTask struct {
 	Checks []TaskCheckFunc
 }
 
-func (e EventCreateTask) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventCreateTask) Matches(apiEvent any) bool {
 	typedEvent, ok := apiEvent.(EventCreateTask)
 	if !ok {
 		return false
@@ -3677,7 +3676,7 @@ type EventUpdateTask struct {
 	Checks  []TaskCheckFunc
 }
 
-func (e EventUpdateTask) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventUpdateTask) Matches(apiEvent any) bool {
 	typedEvent, ok := apiEvent.(EventUpdateTask)
 	if !ok {
 		return false
@@ -3704,7 +3703,7 @@ type EventDeleteTask struct {
 	Checks []TaskCheckFunc
 }
 
-func (e EventDeleteTask) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventDeleteTask) Matches(apiEvent any) bool {
 	typedEvent, ok := apiEvent.(EventDeleteTask)
 	if !ok {
 		return false
@@ -3938,7 +3937,7 @@ type EventCreateNetwork struct {
 	Checks  []NetworkCheckFunc
 }
 
-func (e EventCreateNetwork) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventCreateNetwork) Matches(apiEvent any) bool {
 	typedEvent, ok := apiEvent.(EventCreateNetwork)
 	if !ok {
 		return false
@@ -3966,7 +3965,7 @@ type EventUpdateNetwork struct {
 	Checks     []NetworkCheckFunc
 }
 
-func (e EventUpdateNetwork) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventUpdateNetwork) Matches(apiEvent any) bool {
 	typedEvent, ok := apiEvent.(EventUpdateNetwork)
 	if !ok {
 		return false
@@ -3993,7 +3992,7 @@ type EventDeleteNetwork struct {
 	Checks  []NetworkCheckFunc
 }
 
-func (e EventDeleteNetwork) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventDeleteNetwork) Matches(apiEvent any) bool {
 	typedEvent, ok := apiEvent.(EventDeleteNetwork)
 	if !ok {
 		return false
@@ -4184,7 +4183,7 @@ type EventCreateCluster struct {
 	Checks  []ClusterCheckFunc
 }
 
-func (e EventCreateCluster) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventCreateCluster) Matches(apiEvent any) bool {
 	typedEvent, ok := apiEvent.(EventCreateCluster)
 	if !ok {
 		return false
@@ -4212,7 +4211,7 @@ type EventUpdateCluster struct {
 	Checks     []ClusterCheckFunc
 }
 
-func (e EventUpdateCluster) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventUpdateCluster) Matches(apiEvent any) bool {
 	typedEvent, ok := apiEvent.(EventUpdateCluster)
 	if !ok {
 		return false
@@ -4239,7 +4238,7 @@ type EventDeleteCluster struct {
 	Checks  []ClusterCheckFunc
 }
 
-func (e EventDeleteCluster) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventDeleteCluster) Matches(apiEvent any) bool {
 	typedEvent, ok := apiEvent.(EventDeleteCluster)
 	if !ok {
 		return false
@@ -4430,7 +4429,7 @@ type EventCreateSecret struct {
 	Checks []SecretCheckFunc
 }
 
-func (e EventCreateSecret) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventCreateSecret) Matches(apiEvent any) bool {
 	typedEvent, ok := apiEvent.(EventCreateSecret)
 	if !ok {
 		return false
@@ -4458,7 +4457,7 @@ type EventUpdateSecret struct {
 	Checks    []SecretCheckFunc
 }
 
-func (e EventUpdateSecret) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventUpdateSecret) Matches(apiEvent any) bool {
 	typedEvent, ok := apiEvent.(EventUpdateSecret)
 	if !ok {
 		return false
@@ -4485,7 +4484,7 @@ type EventDeleteSecret struct {
 	Checks []SecretCheckFunc
 }
 
-func (e EventDeleteSecret) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventDeleteSecret) Matches(apiEvent any) bool {
 	typedEvent, ok := apiEvent.(EventDeleteSecret)
 	if !ok {
 		return false
@@ -4676,7 +4675,7 @@ type EventCreateConfig struct {
 	Checks []ConfigCheckFunc
 }
 
-func (e EventCreateConfig) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventCreateConfig) Matches(apiEvent any) bool {
 	typedEvent, ok := apiEvent.(EventCreateConfig)
 	if !ok {
 		return false
@@ -4704,7 +4703,7 @@ type EventUpdateConfig struct {
 	Checks    []ConfigCheckFunc
 }
 
-func (e EventUpdateConfig) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventUpdateConfig) Matches(apiEvent any) bool {
 	typedEvent, ok := apiEvent.(EventUpdateConfig)
 	if !ok {
 		return false
@@ -4731,7 +4730,7 @@ type EventDeleteConfig struct {
 	Checks []ConfigCheckFunc
 }
 
-func (e EventDeleteConfig) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventDeleteConfig) Matches(apiEvent any) bool {
 	typedEvent, ok := apiEvent.(EventDeleteConfig)
 	if !ok {
 		return false
@@ -4922,7 +4921,7 @@ type EventCreateResource struct {
 	Checks   []ResourceCheckFunc
 }
 
-func (e EventCreateResource) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventCreateResource) Matches(apiEvent any) bool {
 	typedEvent, ok := apiEvent.(EventCreateResource)
 	if !ok {
 		return false
@@ -4950,7 +4949,7 @@ type EventUpdateResource struct {
 	Checks      []ResourceCheckFunc
 }
 
-func (e EventUpdateResource) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventUpdateResource) Matches(apiEvent any) bool {
 	typedEvent, ok := apiEvent.(EventUpdateResource)
 	if !ok {
 		return false
@@ -4977,7 +4976,7 @@ type EventDeleteResource struct {
 	Checks   []ResourceCheckFunc
 }
 
-func (e EventDeleteResource) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventDeleteResource) Matches(apiEvent any) bool {
 	typedEvent, ok := apiEvent.(EventDeleteResource)
 	if !ok {
 		return false
@@ -5174,7 +5173,7 @@ type EventCreateExtension struct {
 	Checks    []ExtensionCheckFunc
 }
 
-func (e EventCreateExtension) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventCreateExtension) Matches(apiEvent any) bool {
 	typedEvent, ok := apiEvent.(EventCreateExtension)
 	if !ok {
 		return false
@@ -5202,7 +5201,7 @@ type EventUpdateExtension struct {
 	Checks       []ExtensionCheckFunc
 }
 
-func (e EventUpdateExtension) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventUpdateExtension) Matches(apiEvent any) bool {
 	typedEvent, ok := apiEvent.(EventUpdateExtension)
 	if !ok {
 		return false
@@ -5229,7 +5228,7 @@ type EventDeleteExtension struct {
 	Checks    []ExtensionCheckFunc
 }
 
-func (e EventDeleteExtension) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventDeleteExtension) Matches(apiEvent any) bool {
 	typedEvent, ok := apiEvent.(EventDeleteExtension)
 	if !ok {
 		return false
@@ -5420,7 +5419,7 @@ type EventCreateVolume struct {
 	Checks []VolumeCheckFunc
 }
 
-func (e EventCreateVolume) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventCreateVolume) Matches(apiEvent any) bool {
 	typedEvent, ok := apiEvent.(EventCreateVolume)
 	if !ok {
 		return false
@@ -5448,7 +5447,7 @@ type EventUpdateVolume struct {
 	Checks    []VolumeCheckFunc
 }
 
-func (e EventUpdateVolume) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventUpdateVolume) Matches(apiEvent any) bool {
 	typedEvent, ok := apiEvent.(EventUpdateVolume)
 	if !ok {
 		return false
@@ -5475,7 +5474,7 @@ type EventDeleteVolume struct {
 	Checks []VolumeCheckFunc
 }
 
-func (e EventDeleteVolume) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventDeleteVolume) Matches(apiEvent any) bool {
 	typedEvent, ok := apiEvent.(EventDeleteVolume)
 	if !ok {
 		return false

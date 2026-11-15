@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/docker/go-events"
 )
 
 var (
@@ -35,7 +34,7 @@ type Event interface {
 
 	// Matches checks if this item in a watch queue Matches the event
 	// description.
-	Matches(events.Event) bool
+	Matches(any) bool
 }
 
 // EventCreate is an interface implemented by every creation event type

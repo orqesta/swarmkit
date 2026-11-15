@@ -19,7 +19,6 @@ var typesWithNoSpec = map[string]struct{}{
 type storeObjectGen struct {
 	*generator.Generator
 	generator.PluginImports
-	eventsPkg  generator.Single
 	stringsPkg generator.Single
 }
 
@@ -88,7 +87,7 @@ func (d *storeObjectGen) genMsgStoreObject(m *generator.Descriptor, storeObject 
 		d.Out()
 		d.P("}")
 		d.P()
-		d.P("func (e Event", event, ccTypeName, ") Matches(apiEvent ", d.eventsPkg.Use(), ".Event) bool {")
+		d.P("func (e Event", event, ccTypeName, ") Matches(apiEvent any) bool {")
 		d.In()
 		d.P("typedEvent, ok := apiEvent.(Event", event, ccTypeName, ")")
 		d.P("if !ok {")
@@ -837,7 +836,6 @@ func (d *storeObjectGen) genConvertWatchArgs(topLevelObjs []string) {
 
 func (d *storeObjectGen) Generate(file *generator.FileDescriptor) {
 	d.PluginImports = generator.NewPluginImports(d.Generator)
-	d.eventsPkg = d.NewImport("github.com/docker/go-events")
 	d.stringsPkg = d.NewImport("strings")
 
 	var topLevelObjs []string

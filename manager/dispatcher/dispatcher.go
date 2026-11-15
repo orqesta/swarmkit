@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/docker/go-events"
 	"github.com/docker/go-metrics"
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
@@ -101,7 +100,7 @@ func DefaultConfig() *Config {
 // is implements it. This interface needed only for easier unit-testing.
 type Cluster interface {
 	GetMemberlist() map[uint64]*api.RaftMember
-	SubscribePeers() (chan events.Event, func())
+	SubscribePeers() (<-chan any, func())
 	MemoryStore() *store.MemoryStore
 }
 
