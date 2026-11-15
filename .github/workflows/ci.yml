@@ -94,5 +94,4 @@ jobs:
       - name: Compile packages without running tests
         run: |
           go test -mod=mod -run '^$' ./...
-          (cd swarmd && go test -run '^
- ./...)
+          (cd swarmd && go test -run '^$' ./...)
