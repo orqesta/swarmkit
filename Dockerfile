@@ -106,13 +106,11 @@ RUN --mount=type=bind,target=. \
     --mount=from=golangci-lint,source=/usr/bin/golangci-lint,target=/usr/bin/golangci-lint <<EOT
   set -e
   config=$(pwd)/.golangci.yml
-  for dir in . swarmd; do
-    (
-      set -x
-      cd $dir
-      golangci-lint run --config "$config" ./...
-    )
-  done
+  golangci-lint run --config "$config" ./...
+  (
+    cd swarmd
+    GOWORK=off golangci-lint run --config "$config" ./...
+  )
 EOT
 
 FROM gobase AS fmt-proto
