@@ -141,7 +141,7 @@ func (a *Allocator) Stop() {
 	<-a.doneChan
 }
 
-func (a *Allocator) init(ctx context.Context, aa *allocActor) (<-<-chan any, func(), error) {
+func (a *Allocator) init(ctx context.Context, aa *allocActor) (<-chan any, func(), error) {
 	watch, watchCancel := state.Watch(a.store.WatchQueue(),
 		api.EventCreateNetwork{},
 		api.EventDeleteNetwork{},
@@ -165,7 +165,7 @@ func (a *Allocator) init(ctx context.Context, aa *allocActor) (<-<-chan any, fun
 	return watch, watchCancel, nil
 }
 
-func (a *Allocator) run(ctx context.Context, aa allocActor, watch <-<-chan any) {
+func (a *Allocator) run(ctx context.Context, aa allocActor, watch <-chan any) {
 	for {
 		select {
 		case ev, ok := <-watch:

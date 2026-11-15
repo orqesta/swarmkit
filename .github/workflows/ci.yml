@@ -80,3 +80,18 @@ jobs:
             *.cache-from=type=gha,scope=dev
       - name: Run tests
         run: make IMAGE_NAME="$IMAGE_NAME" "${{ matrix.target }}"
+
+  compile:
+    name: Compile module and test packages
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Compile packages without running tests
+        run: |
+          go test -mod=mod -run '^$' ./...
+          (cd swarmd && go test -mod=mod -run '^$' ./...)

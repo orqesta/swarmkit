@@ -35,7 +35,7 @@ type Config struct {
 	NotifyNodeChange chan<- *NodeChanges
 
 	// NotifyTLSChange channel sends new TLS information changes, which can cause a session to restart
-	NotifyTLSChange <-<-chan any
+	NotifyTLSChange <-chan any
 
 	// Credentials is credentials for grpc connection to manager.
 	Credentials credentials.TransportCredentials

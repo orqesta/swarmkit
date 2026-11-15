@@ -99,7 +99,7 @@ func Expect(t *testing.T, watch <-chan any, specifiers ...api.Event) {
 	for {
 		select {
 		case event := <-watch:
-			if !matcher.Match(event) {
+			if !matcher(event) {
 				assert.FailNow(t, fmt.Sprintf("unexpected event: %T", event))
 			}
 			return

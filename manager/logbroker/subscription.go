@@ -198,7 +198,7 @@ func (s *subscription) match() {
 	})
 }
 
-func (s *subscription) watch(ch <-<-chan any) error {
+func (s *subscription) watch(ch <-chan any) error {
 	selector := s.message.Selector
 
 	matchTasks := map[string]struct{}{}
