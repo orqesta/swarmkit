@@ -47,10 +47,7 @@ func (b *renewalBackoff) Next() time.Duration {
 	if maximum <= 0 {
 		maximum = 20 * time.Second
 	}
-	base := b.config.Base
-	if base < 0 {
-		base = 0
-	}
+	base := max(b.config.Base, 0)
 	bound := maximum
 	if failures <= 63 {
 		shift := failures - 1

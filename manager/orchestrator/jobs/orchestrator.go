@@ -4,7 +4,6 @@ import (
 	"context"
 	"sync"
 
-
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/moby/swarmkit/v2/manager/orchestrator"
