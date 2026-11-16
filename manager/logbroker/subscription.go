@@ -244,7 +244,10 @@ func (s *subscription) watch(ch <-chan any) error {
 		select {
 		case <-s.ctx.Done():
 			return s.ctx.Err()
-		case event := <-ch:
+		case event, ok := <-ch:
+			if !ok {
+				return fmt.Errorf("task subscription watch closed")
+			}
 			switch v := event.(type) {
 			case api.EventCreateTask:
 				t = v.Task

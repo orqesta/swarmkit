@@ -297,7 +297,10 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 
 	for {
 		select {
-		case ev := <-peerWatcher:
+		case ev, ok := <-peerWatcher:
+			if !ok {
+				return errors.New("peer watch closed")
+			}
 			publishManagers(ev.([]*api.Peer))
 		case <-d.processUpdatesTrigger:
 			d.processUpdates(ctx)
@@ -312,7 +315,10 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 			d.processUpdates(ctx)
 			// batch timer has already expired, so no need to drain
 			batchTimer.Reset(maxBatchInterval)
-		case v := <-configWatcher:
+		case v, ok := <-configWatcher:
+			if !ok {
+				return errors.New("cluster configuration watch closed")
+			}
 			// TODO(dperny): remove extraneous log message
 			log.G(ctx).Info("cluster update event")
 			cluster := v.(api.EventUpdateCluster)
@@ -964,7 +970,10 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 	batchingLoop:
 		for modificationCnt < modificationBatchLimit {
 			select {
-			case event := <-nodeTasks:
+			case event, ok := <-nodeTasks:
+				if !ok {
+					return status.Error(codes.Unavailable, "node task watch closed")
+				}
 				switch v := event.(type) {
 				case api.EventCreateTask:
 					tasksMap[v.Task.ID] = v.Task
@@ -1149,7 +1158,10 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 	batchingLoop:
 		for modificationCnt < modificationBatchLimit {
 			select {
-			case event := <-nodeTasks:
+			case event, ok := <-nodeTasks:
+				if !ok {
+					return status.Error(codes.Unavailable, "node task watch closed")
+				}
 				switch v := event.(type) {
 				// We don't monitor EventCreateTask because tasks are
 				// never created in the ASSIGNED state. First tasks are
@@ -1464,7 +1476,10 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		)
 
 		select {
-		case ev := <-clusterUpdatesCh:
+		case ev, ok := <-clusterUpdatesCh:
+			if !ok {
+				return status.Error(codes.Unavailable, "cluster update watch closed")
+			}
 			update := ev.(clusterUpdate)
 			if update.managerUpdate != nil {
 				mgrs = *update.managerUpdate
@@ -1475,7 +1490,10 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 			if update.rootCAUpdate != nil {
 				rootCert = *update.rootCAUpdate
 			}
-		case ev := <-nodeUpdates:
+		case ev, ok := <-nodeUpdates:
+			if !ok {
+				return status.Error(codes.Unavailable, "node update watch closed")
+			}
 			nodeObj = ev.(api.EventUpdateNode).Node
 		case <-stream.Context().Done():
 			return stream.Context().Err()

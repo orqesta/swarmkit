@@ -256,7 +256,10 @@ func (lb *LogBroker) SubscribeLogs(request *api.SubscribeLogsRequest, stream api
 			return ctx.Err()
 		case <-pctx.Done():
 			return pctx.Err()
-		case event := <-publishCh:
+		case event, ok := <-publishCh:
+			if !ok {
+				return status.Error(codes.Unavailable, "log publication watch closed")
+			}
 			publish := event.(*logMessage)
 			if publish.completed {
 				return publish.err
@@ -348,7 +351,10 @@ func (lb *LogBroker) ListenSubscriptions(_ *api.ListenSubscriptionsRequest, stre
 	// Send down new subscriptions.
 	for {
 		select {
-		case v := <-subscriptionCh:
+		case v, ok := <-subscriptionCh:
+			if !ok {
+				return status.Error(codes.Unavailable, "log subscription watch closed")
+			}
 			sub := v.(*subscription)
 
 			if sub.Closed() {

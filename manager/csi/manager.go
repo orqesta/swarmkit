@@ -138,7 +138,11 @@ func (vm *Manager) run(pctx context.Context) {
 
 	for {
 		select {
-		case ev := <-watch:
+		case ev, ok := <-watch:
+			if !ok {
+				vm.pendingVolumes.Stop()
+				return
+			}
 			vm.handleEvent(ev)
 		case <-vm.stopChan:
 			vm.pendingVolumes.Stop()
