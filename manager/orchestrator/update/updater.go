@@ -263,7 +263,11 @@ slotsLoop:
 			case <-u.stopChan:
 				stopped = true
 				break slotsLoop
-			case ev := <-failedTaskWatch:
+			case ev, ok := <-failedTaskWatch:
+				if !ok {
+					stopped = true
+					break slotsLoop
+				}
 				if failureTriggersAction(ev.(api.EventUpdateTask).Task) {
 					break slotsLoop
 				}
@@ -293,7 +297,11 @@ slotsLoop:
 				break monitorLoop
 			case <-doneMonitoring:
 				break monitorLoop
-			case ev := <-failedTaskWatch:
+			case ev, ok := <-failedTaskWatch:
+				if !ok {
+					stopped = true
+					break monitorLoop
+				}
 				if failureTriggersAction(ev.(api.EventUpdateTask).Task) {
 					break monitorLoop
 				}
@@ -421,7 +429,10 @@ func (u *Updater) updateTask(ctx context.Context, slot orchestrator.Slot, update
 	// TODO(aluzzardi): Consider adding a timeout here.
 	for {
 		select {
-		case e := <-taskUpdates:
+		case e, ok := <-taskUpdates:
+			if !ok {
+				return fmt.Errorf("task update watch closed while waiting for task %s", updated.ID)
+			}
 			updated = e.(api.EventUpdateTask).Task
 			if updated.Status.State >= api.TaskStateRunning {
 				u.updatedTasksMu.Lock()

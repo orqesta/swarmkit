@@ -333,7 +333,10 @@ func (n *Node) SetAddr(ctx context.Context, addr string) error {
 	isLeader := n.signalledLeadership.Load() == 1
 	for !isLeader {
 		select {
-		case leadershipChange := <-leadershipCh:
+		case leadershipChange, ok := <-leadershipCh:
+			if !ok {
+				return ErrStopped
+			}
 			if leadershipChange == IsLeader {
 				isLeader = true
 			}

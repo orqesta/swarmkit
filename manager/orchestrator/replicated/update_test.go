@@ -64,7 +64,11 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 		for {
 			var e any
 			select {
-			case e = <-watchUpdate:
+			case event, ok := <-watchUpdate:
+				if !ok {
+					return
+				}
+				e = event
 			case <-ctx.Done():
 				return
 			}
@@ -232,7 +236,12 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 	for {
 		var e any
 		select {
-		case e = <-watchServiceUpdate:
+		case event, ok := <-watchServiceUpdate:
+			if !ok {
+				t.Error("service update watch closed before the expected state")
+				return
+			}
+			e = event
 		case <-ctx.Done():
 			t.Error("test timed out before watchServiceUpdate provided an event")
 			return
@@ -267,7 +276,12 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 	for {
 		var e any
 		select {
-		case e = <-watchServiceUpdate:
+		case event, ok := <-watchServiceUpdate:
+			if !ok {
+				t.Error("service update watch closed before the expected state")
+				return
+			}
+			e = event
 			t.Log("service was updated")
 		case <-ctx.Done():
 			t.Error("test timed out before watchServiceUpdate provided an event")
@@ -318,7 +332,12 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 	for {
 		var e any
 		select {
-		case e = <-watchServiceUpdate:
+		case event, ok := <-watchServiceUpdate:
+			if !ok {
+				t.Error("service update watch closed before the expected state")
+				return
+			}
+			e = event
 		case <-ctx.Done():
 			t.Error("test timed out before watchServiceUpdate provided an event")
 			return
@@ -349,7 +368,12 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 		for {
 			var e any
 			select {
-			case e = <-watchServiceUpdate:
+			case event, ok := <-watchServiceUpdate:
+				if !ok {
+					t.Error("service update watch closed before the expected state")
+					return
+				}
+				e = event
 			case <-ctx.Done():
 				t.Error("test timed out before watchServiceUpdate provided an event")
 				return
@@ -363,7 +387,12 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 		for {
 			var e any
 			select {
-			case e = <-watchServiceUpdate:
+			case event, ok := <-watchServiceUpdate:
+				if !ok {
+					t.Error("service update watch closed before the expected state")
+					return
+				}
+				e = event
 			case <-ctx.Done():
 				t.Error("test timed out before watchServiceUpdate provided an event")
 				return

@@ -821,13 +821,16 @@ func (m *Manager) watchForClusterChanges(ctx context.Context) error {
 	}
 
 	go func() {
+		defer clusterWatchCancel()
 		for {
 			select {
-			case event := <-clusterWatch:
+			case event, ok := <-clusterWatch:
+				if !ok {
+					return
+				}
 				clusterEvent := event.(api.EventUpdateCluster)
 				m.updateKEK(ctx, clusterEvent.Cluster)
 			case <-ctx.Done():
-				clusterWatchCancel()
 				return
 			}
 		}
@@ -870,7 +873,10 @@ func (m *Manager) handleLeadershipEvents(ctx context.Context, leadershipCh <-cha
 	oldLeader := m.getLeaderNodeID()
 	for {
 		select {
-		case leadershipEvent := <-leadershipCh:
+		case leadershipEvent, ok := <-leadershipCh:
+			if !ok {
+				return
+			}
 			m.mu.Lock()
 			if m.stopped {
 				m.mu.Unlock()

@@ -174,7 +174,10 @@ func (o *Orchestrator) run(ctx context.Context) {
 		}
 
 		select {
-		case event := <-o.watchChan:
+		case event, ok := <-o.watchChan:
+			if !ok {
+				return
+			}
 			o.handleEvent(ctx, event)
 		case <-o.stopChan:
 			// we also need to check for stop in here, in case there are no
