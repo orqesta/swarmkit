@@ -52,6 +52,7 @@ RUN --mount=type=bind,target=.,rw \
   if [ -n "$diff" ]; then
     echo >&2 'ERROR: The result of "go generate" differs. Please update with "make generate"'
     echo "$diff"
+    git diff -- api/api.pb.txt
     exit 1
   fi
 EOT
