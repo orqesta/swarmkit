@@ -25,7 +25,7 @@ RUN --mount=type=bind,target=.,rw \
 # protoc is a build compiler provided by the base distribution.
 # Go dependencies and the generator plugin remain managed through Go Modules.
 FROM gobase AS generate-base
-RUN apt-get update && apt-get install -y --no-install-recommends protobuf-compiler
+RUN apt-get update && apt-get install -y --no-install-recommends protobuf-compiler libprotobuf-dev
 
 FROM generate-base AS generate-build
 RUN --mount=type=bind,target=.,rw \
