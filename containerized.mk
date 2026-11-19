@@ -1,5 +1,5 @@
-IMAGE_NAME ?= docker/swarmkit
-GOPATH ?= /go
+IMAGE_NAME=docker/swarmkit
+GOPATH=/go
 DOCKER_IMAGE_DIR = $(GOPATH)/src/github.com/docker/swarmkit
 BUILDX_CMD ?= docker buildx
 
