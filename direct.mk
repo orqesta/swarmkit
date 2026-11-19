@@ -81,9 +81,9 @@ check: ## Run various source code validation tools
 
 .PHONY: fmt-proto
 fmt-proto:
-	@test -z "$$(find . ! -path './vendor/*' ! -name timestamp.proto ! -name duration.proto -name '*.proto' -type f -exec grep -Hn -e "^ " {} \; | tee /dev/stderr)" || \
+	@test -z "$$(find . ! -name timestamp.proto ! -name duration.proto -name '*.proto' -type f -exec grep -Hn -e "^ " {} \; | tee /dev/stderr)" || \
 		(echo "👹 please indent proto files with tabs only" && false)
-	@test -z "$$(find . ! -path './vendor/*' -name '*.proto' -type f -exec grep -Hn "Meta meta = " {} \; | grep -v '(gogoproto.nullable) = false' | tee /dev/stderr)" || \
+	@test -z "$$(find . -name '*.proto' -type f -exec grep -Hn "Meta meta = " {} \; | grep -v '(gogoproto.nullable) = false' | tee /dev/stderr)" || \
 		(echo "👹 meta fields in proto files must have option (gogoproto.nullable) = false" && false)
 
 .PHONY: build
