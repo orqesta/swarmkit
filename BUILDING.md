@@ -41,4 +41,6 @@ DOCKER_SWARMKIT_USE_CONTAINER=1 make
 ```
 
 The `docker-bake.hcl` validation targets run linting, module validation and
-generation validation. CI uses Go Modules for compilation and tests.
+generation validation. CI uses Go Modules for compilation and tests. The
+container runner mounts source directly through Docker; it does not require
+`docker-sync` or shell-built command strings.

@@ -32,8 +32,5 @@ bin/swarmkitstate
 # ignore code coverage output
 *coverage.txt
 
-# dev sync, if used
-/.docker-sync/
-
 # Third-party dependencies are resolved through Go Modules, not vendor.
 /vendor/
