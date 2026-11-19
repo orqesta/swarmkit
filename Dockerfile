@@ -86,7 +86,7 @@ RUN --mount=type=bind,target=. \
 
 # use generate-base to have protoc available
 FROM generate-base
-ENV GO111MODULE=on GOFLAGS=-mod=mod
+ENV GO111MODULE=on
 # install the dependencies from `make setup`
 # we only copy `direct.mk` to avoid busting the cache too easily
 COPY direct.mk .

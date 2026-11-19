@@ -16,7 +16,6 @@ permissions:
 
 env:
   DOCKER_SWARMKIT_USE_CONTAINER: "1"
-  GOFLAGS: "-mod=mod"
 
 jobs:
   validate:

@@ -17,7 +17,6 @@ permissions:
 env:
   DOCKER_SWARMKIT_USE_CONTAINER: "1"
   IMAGE_NAME: orqesta/swarmkit
-  GOFLAGS: "-mod=mod"
 
 jobs:
   stop-first-regression:
