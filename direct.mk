@@ -42,7 +42,7 @@ version/version.go:
 # protoc maps them to the source tree; third-party schemas come from Go Modules.
 PROTO_GOGO_DIR = $(shell go list -m -f '{{.Dir}}' github.com/gogo/protobuf)
 PROTO_RAFT_DIR = $(shell go list -m -f '{{.Dir}}' go.etcd.io/raft/v3)
-PROTO_INCLUDES = --proto_path=github.com/docker/swarmkit=$(ROOTDIR) --proto_path=github.com/gogo/protobuf=$(PROTO_GOGO_DIR) --proto_path=go.etcd.io/raft/v3=$(PROTO_RAFT_DIR) --proto_path=$(PROTO_GOGO_DIR) --proto_path=/usr/local/include
+PROTO_INCLUDES = --proto_path=github.com/docker/swarmkit=$(ROOTDIR) --proto_path=github.com/gogo/protobuf=$(PROTO_GOGO_DIR) --proto_path=go.etcd.io/raft/v3=$(PROTO_RAFT_DIR) --proto_path=$(PROTO_GOGO_DIR) --proto_path=/usr/include
 PROTO_IMPORT_MAPS = Mgogoproto/gogo.proto=github.com/gogo/protobuf/gogoproto,Mgoogle/protobuf/any.proto=github.com/gogo/protobuf/types,Mgoogle/protobuf/descriptor.proto=github.com/gogo/protobuf/protoc-gen-gogo/descriptor,Mgoogle/protobuf/field_mask.proto=github.com/gogo/protobuf/types,Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types,Mgoogle/protobuf/duration.proto=github.com/gogo/protobuf/types,Mgoogle/protobuf/wrappers.proto=github.com/gogo/protobuf/types,Mgithub.com/docker/swarmkit/protobuf/plugin/plugin.proto=github.com/moby/swarmkit/v2/protobuf/plugin
 PROTO_OPTIONS = plugins=grpc+deepcopy+storeobject+raftproxy+authenticatedwrapper,$(PROTO_IMPORT_MAPS)
 PROTO_API = $(addprefix github.com/docker/swarmkit/,$(wildcard api/*.proto))
@@ -65,7 +65,7 @@ protos: setup bin/protoc-gen-gogoswarm ## regenerate protobuf bindings
 	@protoc $(PROTO_INCLUDES) $(PROTO_GENERATOR) --gogoswarm_out="$(PROTO_OPTIONS),import_path=github.com/moby/swarmkit/v2/protobuf/plugin:$(ROOTDIR)" $(PROTO_PLUGIN)
 	@protoc $(PROTO_INCLUDES) $(PROTO_GENERATOR) --gogoswarm_out="$(PROTO_OPTIONS),import_path=github.com/moby/swarmkit/v2/protobuf/plugin/deepcopy/test:$(ROOTDIR)" $(PROTO_DEEPCOPY)
 	@protoc $(PROTO_INCLUDES) $(PROTO_GENERATOR) --gogoswarm_out="$(PROTO_OPTIONS),import_path=github.com/moby/swarmkit/v2/protobuf/plugin/raftproxy/test:$(ROOTDIR)" $(PROTO_RAFTPROXY)
-	@protoc $(PROTO_INCLUDES) --include_imports --descriptor_set_out=/dev/stdout $(PROTO_API) | protoc --proto_path=/usr/local/include --decode=google.protobuf.FileDescriptorSet google/protobuf/descriptor.proto > api/api.pb.txt
+	@protoc $(PROTO_INCLUDES) --include_imports --descriptor_set_out=/dev/stdout $(PROTO_API) | protoc --proto_path=/usr/include --decode=google.protobuf.FileDescriptorSet google/protobuf/descriptor.proto > api/api.pb.txt
 
 .PHONY: checkprotos
 checkprotos: generate ## check if protobufs needs to be generated again
