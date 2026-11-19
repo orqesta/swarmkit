@@ -66,9 +66,9 @@ fmt-proto:
 lint:
 	$(BUILDX_CMD) bake lint
 
-.PHONY: vendor-validate
-vendor-validate:
-	$(BUILDX_CMD) bake vendor-validate
+.PHONY: module-validate
+module-validate:
+	$(BUILDX_CMD) bake module-validate
 
 .PHONY: generate-validate
 generate-validate:

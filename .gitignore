@@ -34,3 +34,6 @@ bin/swarmkitstate
 
 # dev sync, if used
 /.docker-sync/
+
+# Third-party dependencies are resolved through Go Modules, not vendor.
+/vendor/
