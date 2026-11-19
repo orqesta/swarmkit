@@ -21,7 +21,7 @@ the manifests.
 ## Protobuf generation
 
 Generation requires the `protoc` compiler, installed from the operating
-system package manager (Debian's `protobuf-compiler` in the development image).
+system package manager (Debian's `protobuf-compiler` and `libprotobuf-dev` in the development image).
 There are no manual binary downloads or installer scripts. The custom
 `protoc-gen-gogoswarm` compiler plugin is built from this repository using
 Go Modules. The gogo/protobuf schema directory is resolved from the selected
