@@ -14,6 +14,8 @@ Its main benefits are:
 
 ## Orqesta local event transport
 
+The fork-specific [architecture decision records](docs/adr/README.md) describe implemented changes and their validation.
+
 This fork publishes in-process state, task, leadership, certificate and log
 notifications through the typed local transport in
 [`jmeiracorbal/go-events`](https://github.com/jmeiracorbal/go-events).
