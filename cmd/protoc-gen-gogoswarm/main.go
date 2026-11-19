@@ -1,6 +1,11 @@
 package main
 
 import (
+	"fmt"
+	"os"
+	"strings"
+
+	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 	"github.com/gogo/protobuf/vanity"
 	"github.com/gogo/protobuf/vanity/command"
@@ -32,5 +37,14 @@ func main() {
 	}
 
 	resp := command.Generate(req)
+	const sourcePrefix = "github.com/docker/swarmkit/"
+	for _, output := range resp.File {
+		name := output.GetName()
+		if !strings.HasPrefix(name, sourcePrefix) {
+			fmt.Fprintf(os.Stderr, "unexpected generated protobuf path %q\n", name)
+			os.Exit(1)
+		}
+		output.Name = proto.String(strings.TrimPrefix(name, sourcePrefix))
+	}
 	command.Write(resp)
 }

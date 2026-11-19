@@ -32,7 +32,7 @@ jobs:
           go-version-file: go.mod
           cache: true
       - name: Test stop-first grace period
-        run: go test -mod=vendor -run '^TestUpdaterStopGracePeriod$' -count=1 ./manager/orchestrator/update
+        run: go test -run '^TestUpdaterStopGracePeriod$' -count=1 ./manager/orchestrator/update
 
   build-dev:
     name: Build development image

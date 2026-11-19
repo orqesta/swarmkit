@@ -990,6 +990,18 @@ file {
       end: 536870912
     }
     reserved_range {
+      start: 4
+      end: 5
+    }
+    reserved_range {
+      start: 5
+      end: 6
+    }
+    reserved_range {
+      start: 6
+      end: 7
+    }
+    reserved_range {
       start: 8
       end: 9
     }
@@ -1032,6 +1044,14 @@ file {
       type: TYPE_BOOL
       default_value: "false"
       json_name: "lazy"
+    }
+    field {
+      name: "unverified_lazy"
+      number: 15
+      label: LABEL_OPTIONAL
+      type: TYPE_BOOL
+      default_value: "false"
+      json_name: "unverifiedLazy"
     }
     field {
       name: "deprecated"

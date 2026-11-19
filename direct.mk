@@ -38,22 +38,34 @@ AUTHORS: .mailmap .git/HEAD
 version/version.go:
 	./version/version.sh > $@
 
+# Protobuf imports retain their wire-compatible upstream virtual paths.
+# protoc maps them to the source tree; third-party schemas come from Go Modules.
+PROTO_GOGO_DIR = $(shell go list -m -f '{{.Dir}}' github.com/gogo/protobuf)
+PROTO_RAFT_DIR = $(shell go list -m -f '{{.Dir}}' go.etcd.io/raft/v3)
+PROTO_INCLUDES = --proto_path=github.com/docker/swarmkit=$(ROOTDIR) --proto_path=github.com/gogo/protobuf=$(PROTO_GOGO_DIR) --proto_path=go.etcd.io/raft/v3=$(PROTO_RAFT_DIR) --proto_path=$(PROTO_GOGO_DIR) --proto_path=/usr/include
+PROTO_IMPORT_MAPS = Mgogoproto/gogo.proto=github.com/gogo/protobuf/gogoproto,Mgoogle/protobuf/any.proto=github.com/gogo/protobuf/types,Mgoogle/protobuf/descriptor.proto=github.com/gogo/protobuf/protoc-gen-gogo/descriptor,Mgoogle/protobuf/field_mask.proto=github.com/gogo/protobuf/types,Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types,Mgoogle/protobuf/duration.proto=github.com/gogo/protobuf/types,Mgoogle/protobuf/wrappers.proto=github.com/gogo/protobuf/types,Mgithub.com/docker/swarmkit/protobuf/plugin/plugin.proto=github.com/moby/swarmkit/v2/protobuf/plugin
+PROTO_OPTIONS = plugins=grpc+deepcopy+storeobject+raftproxy+authenticatedwrapper,$(PROTO_IMPORT_MAPS)
+PROTO_API = $(addprefix github.com/docker/swarmkit/,$(wildcard api/*.proto))
+PROTO_PLUGIN = github.com/docker/swarmkit/protobuf/plugin/plugin.proto
+PROTO_DEEPCOPY = github.com/docker/swarmkit/protobuf/plugin/deepcopy/test/deepcopy.proto
+PROTO_RAFTPROXY = github.com/docker/swarmkit/protobuf/plugin/raftproxy/test/service.proto
+PROTO_GENERATOR = --plugin=protoc-gen-gogoswarm=$(ROOTDIR)/bin/protoc-gen-gogoswarm
+
 .PHONY: setup
-setup: ## install dependencies
-	@echo "🐳 $@"
-	# install golangci-lint to ./bin/golangci-lint
-	@curl -fsSL https://raw.githubusercontent.com/golangci/golangci-lint/v2.1.5/install.sh | sh -s v2.1.5
-	@go install tool github.com/containerd/protobuild
+setup: ## download dependencies through Go Modules
+	@go mod download
 
 .PHONY: generate
-generate: protos
-	@echo "🐳 $@"
-	@PATH=${ROOTDIR}/bin:${GOBIN}:${PATH} go generate -x ${PACKAGES}
+generate: protos ## regenerate protobuf code and go:generate outputs
+	@go generate -x $(PACKAGES)
 
 .PHONY: protos
-protos: bin/protoc-gen-gogoswarm ## generate protobuf
-	@echo "🐳 $@"
-	@PATH=${ROOTDIR}/bin:${GOBIN}:${PATH} protobuild ${PACKAGES}
+protos: setup bin/protoc-gen-gogoswarm ## regenerate protobuf bindings
+	@protoc $(PROTO_INCLUDES) $(PROTO_GENERATOR) --gogoswarm_out="$(PROTO_OPTIONS),import_path=github.com/moby/swarmkit/v2/api:$(ROOTDIR)" $(PROTO_API)
+	@protoc $(PROTO_INCLUDES) $(PROTO_GENERATOR) --gogoswarm_out="$(PROTO_OPTIONS),import_path=github.com/moby/swarmkit/v2/protobuf/plugin:$(ROOTDIR)" $(PROTO_PLUGIN)
+	@protoc $(PROTO_INCLUDES) $(PROTO_GENERATOR) --gogoswarm_out="$(PROTO_OPTIONS),import_path=github.com/moby/swarmkit/v2/protobuf/plugin/deepcopy/test:$(ROOTDIR)" $(PROTO_DEEPCOPY)
+	@protoc $(PROTO_INCLUDES) $(PROTO_GENERATOR) --gogoswarm_out="$(PROTO_OPTIONS),import_path=github.com/moby/swarmkit/v2/protobuf/plugin/raftproxy/test:$(ROOTDIR)" $(PROTO_RAFTPROXY)
+	@protoc $(PROTO_INCLUDES) --include_imports --descriptor_set_out=/dev/stdout $(PROTO_API) | protoc --proto_path=/usr/include --decode=google.protobuf.FileDescriptorSet google/protobuf/descriptor.proto > api/api.pb.txt
 
 .PHONY: checkprotos
 checkprotos: generate ## check if protobufs needs to be generated again
@@ -66,13 +78,13 @@ checkprotos: generate ## check if protobufs needs to be generated again
 check: fmt-proto
 check: ## Run various source code validation tools
 	@echo "🐳 $@"
-	@./bin/golangci-lint run
+	@go vet ./...
 
 .PHONY: fmt-proto
 fmt-proto:
-	@test -z "$$(find . -path ./vendor -prune -o ! -name timestamp.proto ! -name duration.proto -name '*.proto' -type f -exec grep -Hn -e "^ " {} \; | tee /dev/stderr)" || \
+	@test -z "$$(find . ! -name timestamp.proto ! -name duration.proto -name '*.proto' -type f -exec grep -Hn -e "^ " {} \; | tee /dev/stderr)" || \
 		(echo "👹 please indent proto files with tabs only" && false)
-	@test -z "$$(find . -path ./vendor -prune -o -name '*.proto' -type f -exec grep -Hn "Meta meta = " {} \; | grep -v '(gogoproto.nullable) = false' | tee /dev/stderr)" || \
+	@test -z "$$(find . -name '*.proto' -type f -exec grep -Hn "Meta meta = " {} \; | grep -v '(gogoproto.nullable) = false' | tee /dev/stderr)" || \
 		(echo "👹 meta fields in proto files must have option (gogoproto.nullable) = false" && false)
 
 .PHONY: build
@@ -143,19 +155,9 @@ coverage-integration: ## generate coverprofiles from the integration tests
 help: ## this help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST) | sort
 
-.PHONY: dep-validate
-dep-validate: go-mod-vendor
-	@echo "+ $@"
-	@go mod tidy
-	@git diff --exit-code go.mod go.sum vendor || \
-		(echo >&2 "+ inconsistent dependencies! what you have in go.mod does not match with what you have in vendor" && false)
-
-.PHONY: go-mod-vendor
-go-mod-vendor:
-	@go mod tidy
-	@go mod vendor
-	@# ensure that key protobuf spec files are in vendor dir
-	@module=github.com/gogo/protobuf ; \
-		prefix=$$(go env GOMODCACHE)/$${module} ; \
-		version=$$(go list -m -f '{{.Version}}' $${module}) ; \
-		cp -a $${prefix}@$${version}/protobuf vendor/$${module}/ && chmod -R u+w vendor/$${module}
+.PHONY: module-validate
+module-validate: ## verify module integrity and module file consistency
+	@go mod download
+	@go mod verify
+	@go mod tidy -diff
+	@cd swarmd && GOWORK=off go mod download && GOWORK=off go mod verify && GOWORK=off go mod tidy -diff

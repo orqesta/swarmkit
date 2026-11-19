@@ -4,79 +4,37 @@ ARG GO_VERSION=1.25
 ARG BASE_DEBIAN_DISTRO="bookworm"
 ARG GOLANG_IMAGE="golang:${GO_VERSION}-${BASE_DEBIAN_DISTRO}"
 
-ARG PROTOC_VERSION=3.14.0
 ARG GOLANGCI_LINT_VERSION=v2.12.2
 
 # gobase
 FROM --platform=$BUILDPLATFORM ${GOLANG_IMAGE} AS gobase
-RUN apt-get update && apt-get install -y --no-install-recommends git make rsync
+RUN apt-get update && apt-get install -y --no-install-recommends git make
 WORKDIR /go/src/github.com/docker/swarmkit
 RUN git config --global --add safe.directory /go/src/github.com/docker/swarmkit
 
-FROM gobase AS packages
-RUN --mount=target=. \
-  mkdir -p /tmp/packages && \
-  echo $(go list ./...) | tee /tmp/packages/packages; \
-  echo $(go list ./integration) | tee /tmp/packages/integration-packages;
-
-FROM gobase AS vendored
-RUN --mount=target=.,rw \
-    --mount=target=/go/pkg/mod,type=cache <<EOT
-  set -e
-  make go-mod-vendor
-  mkdir /out
-  cp -r go.mod go.sum vendor /out
-EOT
-
-FROM scratch AS vendor-update
-COPY --from=vendored /out /
-
-FROM gobase AS vendor-validate
-RUN --mount=type=bind,target=.,rw \
-    --mount=from=vendored,source=/out,target=/out <<EOT
-  set -e
-  git add -A
-  rm -rf vendor
-  cp -rf /out/* .
-  if [ -n "$(git status --porcelain -- go.mod go.sum vendor)" ]; then
-    echo >&2 'ERROR: Vendor result differs. Please vendor your package with "make go-mod-vendor"'
-    git status --porcelain -- go.mod go.sum vendor
-    exit 1
-  fi
-EOT
+FROM gobase AS module-validate
+RUN --mount=type=bind,target=. \
+    --mount=type=cache,target=/go/pkg/mod \
+    make --file=direct.mk module-validate
 
 FROM gobase AS protoc-gen-gogoswarm
 RUN --mount=type=bind,target=.,rw \
     --mount=type=cache,target=/root/.cache \
     make bin/protoc-gen-gogoswarm && mv bin/protoc-gen-gogoswarm /usr/local/bin/
 
-FROM gobase AS protobuild
-RUN --mount=type=bind,target=. \
-    --mount=type=cache,target=/root/.cache \
-    go install tool github.com/containerd/protobuild
-
+# protoc is a build compiler provided by the base distribution.
+# Go dependencies and the generator plugin remain managed through Go Modules.
 FROM gobase AS generate-base
-RUN apt-get --no-install-recommends install -y unzip
-ARG PROTOC_VERSION
-ARG TARGETOS
-ARG TARGETARCH
-RUN <<EOT
-  set -e
-  arch=$(echo $TARGETARCH | sed -e s/amd64/x86_64/ -e s/arm64/aarch_64/)
-  wget -q https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-${TARGETOS}-${arch}.zip
-  unzip protoc-${PROTOC_VERSION}-${TARGETOS}-${arch}.zip -d /usr/local
-EOT
+RUN apt-get update && apt-get install -y --no-install-recommends protobuf-compiler libprotobuf-dev
 
 FROM generate-base AS generate-build
 RUN --mount=type=bind,target=.,rw \
-    --mount=from=packages,source=/tmp/packages,target=/tmp/packages \
-    --mount=from=protobuild,source=/go/bin/protobuild,target=/usr/bin/protobuild \
+    --mount=type=cache,target=/go/pkg/mod \
     --mount=from=protoc-gen-gogoswarm,source=/usr/local/bin/protoc-gen-gogoswarm,target=/usr/bin/protoc-gen-gogoswarm <<EOT
   set -ex
-  protobuild $(cat /tmp/packages/packages)
-  go generate -mod=vendor -x $(cat /tmp/packages/packages)
+  make generate
   mkdir /out
-  git ls-files -m --others -- ':!vendor' '**/*.pb.go' | tar -cf - --files-from - | tar -C /out -xf -
+  git ls-files -m --others -- '**/*.pb.go' 'api/api.pb.txt' | tar -cf - --files-from - | tar -C /out -xf -
 EOT
 
 FROM scratch AS generate-update
@@ -90,7 +48,7 @@ RUN --mount=type=bind,target=.,rw \
   if [ "$(ls -A /generated)" ]; then
     cp -rf /generated/* .
   fi
-  diff=$(git status --porcelain -- ':!vendor' '**/*.pb.go')
+  diff=$(git status --porcelain -- '**/*.pb.go' 'api/api.pb.txt')
   if [ -n "$diff" ]; then
     echo >&2 'ERROR: The result of "go generate" differs. Please update with "make generate"'
     echo "$diff"
@@ -103,6 +61,7 @@ FROM gobase AS lint
 RUN apt-get install -y --no-install-recommends libgcc-11-dev libc6-dev
 RUN --mount=type=bind,target=. \
     --mount=type=cache,target=/root/.cache \
+    --mount=type=cache,target=/go/pkg/mod \
     --mount=from=golangci-lint,source=/usr/bin/golangci-lint,target=/usr/bin/golangci-lint <<EOT
   set -e
   config=$(pwd)/.golangci.yml
