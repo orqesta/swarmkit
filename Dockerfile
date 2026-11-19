@@ -4,12 +4,11 @@ ARG GO_VERSION=1.25
 ARG BASE_DEBIAN_DISTRO="bookworm"
 ARG GOLANG_IMAGE="golang:${GO_VERSION}-${BASE_DEBIAN_DISTRO}"
 
-ARG PROTOC_VERSION=3.14.0
 ARG GOLANGCI_LINT_VERSION=v2.12.2
 
 # gobase
 FROM --platform=$BUILDPLATFORM ${GOLANG_IMAGE} AS gobase
-RUN apt-get update && apt-get install -y --no-install-recommends git make rsync
+RUN apt-get update && apt-get install -y --no-install-recommends git make
 WORKDIR /go/src/github.com/docker/swarmkit
 RUN git config --global --add safe.directory /go/src/github.com/docker/swarmkit
 
@@ -23,17 +22,10 @@ RUN --mount=type=bind,target=.,rw \
     --mount=type=cache,target=/root/.cache \
     make bin/protoc-gen-gogoswarm && mv bin/protoc-gen-gogoswarm /usr/local/bin/
 
+# protoc is a build compiler provided by the base distribution.
+# Go dependencies and the generator plugin remain managed through Go Modules.
 FROM gobase AS generate-base
-RUN apt-get --no-install-recommends install -y unzip
-ARG PROTOC_VERSION
-ARG TARGETOS
-ARG TARGETARCH
-RUN <<EOT
-  set -e
-  arch=$(echo $TARGETARCH | sed -e s/amd64/x86_64/ -e s/arm64/aarch_64/)
-  wget -q https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-${TARGETOS}-${arch}.zip
-  unzip protoc-${PROTOC_VERSION}-${TARGETOS}-${arch}.zip -d /usr/local
-EOT
+RUN apt-get update && apt-get install -y --no-install-recommends protobuf-compiler
 
 FROM generate-base AS generate-build
 RUN --mount=type=bind,target=.,rw \
