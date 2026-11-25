@@ -18,7 +18,7 @@ import (
 	"github.com/cloudflare/cfssl/initca"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/ca"
-	"github.com/moby/swarmkit/v2/ca/pkcs8"
+	"github.com/moby/swarmkit/v2/ca/keyutils"
 	"github.com/moby/swarmkit/v2/connectionbroker"
 	"github.com/moby/swarmkit/v2/identity"
 	"github.com/moby/swarmkit/v2/ioutils"
@@ -351,7 +351,7 @@ func genSecurityConfig(s *store.MemoryStore, rootCA ca.RootCA, krw *ca.KeyReadWr
 		return nil, nil, err
 	}
 
-	key, err = pkcs8.ConvertECPrivateKeyPEM(key)
+	key, err = keyutils.ECToPKCS8PEM(key)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -456,7 +456,7 @@ func CreateRootCertAndKey(rootCN string) ([]byte, []byte, error) {
 		return nil, nil, err
 	}
 
-	key, err = pkcs8.ConvertECPrivateKeyPEM(key)
+	key, err = keyutils.ECToPKCS8PEM(key)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -1,0 +1,41 @@
+name: Resolve PKCS8 module lockfiles
+on:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  lockfiles:
+    if: github.head_ref == 'refactor/go-modules-no-vendor'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    env:
+      GOWORK: "off"
+      GOSUMDB: sum.golang.org
+      GONOSUMDB: none
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Generate and verify module manifests
+        run: |
+          go get github.com/emmansun/gmsm/pkcs@v0.43.0
+          go mod tidy
+          go mod verify
+          go mod tidy -diff
+          sed 's/^/ROOTMOD:/' go.mod
+          sed 's/^/ROOTSUM:/' go.sum
+          cd swarmd
+          go mod tidy
+          go mod verify
+          go mod tidy -diff
+          sed 's/^/SWARMDMOD:/' go.mod
+          sed 's/^/SWARMDSUM:/' go.sum
+      - name: Validate cryptographic key compatibility
+        run: |
+          if git grep -n 'github.com/moby/swarmkit/v2/ca/pkcs8' -- '*.go'; then
+            exit 1
+          fi
+          go test -count=1 ./ca/keyutils
+          go test -count=1 ./ca/...

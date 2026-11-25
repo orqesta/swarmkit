@@ -9,7 +9,6 @@ import (
 
 	"github.com/moby/swarmkit/v2/ca"
 	"github.com/moby/swarmkit/v2/ca/keyutils"
-	"github.com/moby/swarmkit/v2/ca/pkcs8"
 	"github.com/moby/swarmkit/v2/ca/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -409,7 +408,7 @@ func testKeyReadWriterDowngradeKeyCase(t *testing.T, tc downgradeTestCase) error
 	require.NoError(t, err)
 
 	if !tc.pkcs8 {
-		key, err = pkcs8.ConvertToECPrivateKeyPEM(key)
+		key, err = keyutils.PKCS8ToECPEM(key)
 		require.NoError(t, err)
 	}
 
@@ -505,7 +504,7 @@ func TestKeyReadWriterReadNonFIPS(t *testing.T) {
 	cert, key, err := testutils.CreateRootCertAndKey("cn")
 	require.NoError(t, err)
 
-	key, err = pkcs8.ConvertToECPrivateKeyPEM(key)
+	key, err = keyutils.PKCS8ToECPEM(key)
 	require.NoError(t, err)
 
 	tempdir := t.TempDir()

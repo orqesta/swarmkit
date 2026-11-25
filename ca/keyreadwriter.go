@@ -12,7 +12,6 @@ import (
 	"crypto/tls"
 
 	"github.com/moby/swarmkit/v2/ca/keyutils"
-	"github.com/moby/swarmkit/v2/ca/pkcs8"
 	"github.com/moby/swarmkit/v2/ioutils"
 	"github.com/pkg/errors"
 )
@@ -455,7 +454,7 @@ func (k *KeyReadWriter) DowngradeKey() error {
 		return errors.New("key is already downgraded to PKCS#1")
 	}
 
-	eckey, err := pkcs8.ConvertToECPrivateKeyPEM(key)
+	eckey, err := keyutils.PKCS8ToECPEM(key)
 	if err != nil {
 		return err
 	}
