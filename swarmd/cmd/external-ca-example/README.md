@@ -3,7 +3,7 @@
 To get started, build and install the go program in this directory:
 
 ```
-$ go install github.com/moby/swarmkit/v2/cmd/external-ca-example@latest
+$ GOWORK=off go install .
 ```
 
 Now, run `external-ca-example`:

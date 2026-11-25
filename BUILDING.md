@@ -2,7 +2,8 @@
 
 SwarmKit is a Go 1.25 module. Build and test with Go Modules; dependencies are
 declared in `go.mod` and verified with `go.sum`. Neither the repository nor
-the build process uses a `vendor/` directory.
+the build process uses a `vendor/` directory. Public modules are verified against
+Go's checksum database (`sum.golang.org`) and the committed `go.sum` files.
 
 ## Local build
 
@@ -16,7 +17,8 @@ cd swarmd && GOWORK=off go mod download && GOWORK=off go test ./...
 The standard `Makefile` provides the `build`, `test`, `integration-tests`,
 `swarmd-tests` and `module-validate` targets. `module-validate` checks
 dependency integrity and ensures that both Go modules are tidy without editing
-the manifests.
+the manifests. CI builds each module with `GOWORK=off`, so the committed
+module manifests are the source of truth. The development workspace is optional.
 
 ## Protobuf generation
 

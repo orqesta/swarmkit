@@ -21,8 +21,6 @@ VERSIONPKG := $(shell go list ./version)
 GO_LDFLAGS=-ldflags "-X $(VERSIONPKG).Version=$(VERSION)"
 GO_TESTFLAGS=--timeout=20m $(RACE)
 
-GOBIN=$(shell go env GOPATH)/bin
-
 .DEFAULT_GOAL = all
 .PHONY: all
 all: check binaries test integration-tests swarmd-tests ## run check, build the binaries and run the tests
@@ -108,7 +106,7 @@ integration-tests: ## run integration tests
 .PHONY: swarmd-tests
 swarmd-tests: ## run swarmd tests
 	@echo "🐳 $@"
-	@cd swarmd && go test -parallel 8 ${GO_TESTFLAGS} -tags "${DOCKER_BUILDTAGS}" ./...
+	@cd swarmd && GOWORK=off go test -parallel 8 ${GO_TESTFLAGS} -tags "${DOCKER_BUILDTAGS}" ./...
 
 # Build a binary from a cmd.
 bin/%: cmd/% .FORCE
@@ -117,7 +115,7 @@ bin/%: cmd/% .FORCE
 
 swarmd/bin/%: swarmd/cmd/% .FORCE
 	@echo "🐳 $@"
-	@cd swarmd && go build -tags "${DOCKER_BUILDTAGS}" -o ../$@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ../$<
+	@cd swarmd && GOWORK=off go build -tags "${DOCKER_BUILDTAGS}" -o ../$@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ../$<
 
 .PHONY: .FORCE
 .FORCE:
@@ -160,7 +158,8 @@ help: ## this help
 
 .PHONY: module-validate
 module-validate: ## verify module integrity and module file consistency
-	@go mod download
-	@go mod verify
-	@go mod tidy -diff
-	@cd swarmd && GOWORK=off go mod download && GOWORK=off go mod verify && GOWORK=off go mod tidy -diff
+	@GOWORK=off go mod tidy -diff
+	@GOWORK=off go mod download
+	@GOWORK=off go mod verify
+	@cd swarmd && GOWORK=off go mod tidy -diff && GOWORK=off go mod download && GOWORK=off go mod verify
+	@git diff --exit-code HEAD -- go.mod go.sum swarmd/go.mod swarmd/go.sum

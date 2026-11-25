@@ -9,8 +9,9 @@ ARG GOLANGCI_LINT_VERSION=v2.12.2
 # gobase
 FROM --platform=$BUILDPLATFORM ${GOLANG_IMAGE} AS gobase
 RUN apt-get update && apt-get install -y --no-install-recommends git make
-WORKDIR /go/src/github.com/docker/swarmkit
-RUN git config --global --add safe.directory /go/src/github.com/docker/swarmkit
+ENV GOWORK=off GOSUMDB=sum.golang.org GONOSUMDB=none
+WORKDIR /workspace/swarmkit
+RUN git config --global --add safe.directory /workspace/swarmkit
 
 FROM gobase AS module-validate
 RUN --mount=type=bind,target=. \

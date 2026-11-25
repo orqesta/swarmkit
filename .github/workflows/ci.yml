@@ -17,6 +17,9 @@ permissions:
 env:
   DOCKER_SWARMKIT_USE_CONTAINER: "1"
   IMAGE_NAME: orqesta/swarmkit
+  GOWORK: "off"
+  GOSUMDB: sum.golang.org
+  GONOSUMDB: none
 
 jobs:
   stop-first-regression:

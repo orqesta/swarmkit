@@ -1,6 +1,5 @@
 IMAGE_NAME=orqesta/swarmkit
-GOPATH=/go
-DOCKER_IMAGE_DIR = $(GOPATH)/src/github.com/docker/swarmkit
+DOCKER_IMAGE_DIR = /workspace/swarmkit
 BUILDX_CMD ?= docker buildx
 
 # Run builds with the source mounted directly. Dependencies are resolved by
@@ -9,7 +8,7 @@ BUILDX_CMD ?= docker buildx
 	@echo "Running target $@ inside a container"
 	@$(MAKE) ensure_image_exists
 	@docker run --rm -t \
-		--volume "swarmkit-cache:$(GOPATH)" \
+		--volume "swarmkit-mod-cache:/go/pkg/mod" \
 		--volume "$(ROOTDIR):$(DOCKER_IMAGE_DIR)" \
 		$(DOCKER_SWARMKIT_DOCKER_RUN_FLAGS) \
 		"$(IMAGE_NAME)" make "$@"
@@ -17,7 +16,7 @@ BUILDX_CMD ?= docker buildx
 .PHONY: shell
 shell: ensure_image_exists
 	@docker run --rm -it \
-		--volume "swarmkit-cache:$(GOPATH)" \
+		--volume "swarmkit-mod-cache:/go/pkg/mod" \
 		--volume "$(ROOTDIR):$(DOCKER_IMAGE_DIR)" \
 		$(DOCKER_SWARMKIT_DOCKER_RUN_FLAGS) \
 		"$(IMAGE_NAME)" bash
