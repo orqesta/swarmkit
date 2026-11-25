@@ -18,7 +18,7 @@ Certificate retry jitter remains independent of the event transport in `ca/backo
 
 ## Go dependencies and repository state
 
-The application modules and Go-based development tools declare their dependencies in their respective `go.mod` files and commit the corresponding `go.sum` files. The local event dependency remains pinned. Builds resolve Go packages through the module cache with read-only manifests and checksum database verification. The repository no longer tracks vendored Go libraries or a separate workspace dependency graph. The Protobuf compiler and its standard schemas are version-pinned operating-system build dependencies. Container builds use a digest-pinned base, explicit image creation and no implicit pull or build fallback. TLA+ specifications remain design documentation; no third-party TLA+ image is acquired by the repository.
+The application modules and Go-based development tools declare their dependencies in their respective `go.mod` files and commit the corresponding `go.sum` files. The local event dependency remains pinned. Builds resolve Go packages through the module cache with read-only manifests and checksum database verification. The repository no longer tracks vendored Go libraries or a separate workspace dependency graph. Protobuf compilation and Go generation use protocompile and the existing Gogo generator. Standard schemas are resolved from the selected Gogo module; no operating-system Protobuf dependency is used. Container builds use a digest-pinned base, explicit image creation and no implicit pull or build fallback. TLA+ specifications remain design documentation; no third-party TLA+ image is acquired by the repository.
 
 ## Integration boundary
 

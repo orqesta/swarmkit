@@ -97,7 +97,7 @@ Some of *SwarmKit*'s main features are:
 Requirements:
 
 -   Go 1.25 or later, installed locally
--   Protobuf compiler 3.21.12 and its standard schemas, only for `make generate`
+-   Git and Make
 
 *SwarmKit* is built in Go and leverages a standard project structure to work well with Go tooling.
 If you are new to Go, please see [BUILDING.md](BUILDING.md) for a more detailed guide.

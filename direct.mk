@@ -24,7 +24,7 @@ PACKAGES = $(shell go list ./...)
 INTEGRATION_PACKAGE = $(shell go list ./integration)
 
 # Project binaries.
-COMMANDS=swarm-bench protoc-gen-gogoswarm
+COMMANDS=swarm-bench swarm-protogen
 BINARIES=$(addprefix bin/,$(COMMANDS))
 SWARMD_COMMANDS=swarmd swarmctl swarm-rafttool
 SWARMD_BINARIES=$(addprefix swarmd/bin/,$(SWARMD_COMMANDS))
@@ -48,18 +48,14 @@ AUTHORS: .mailmap .git/HEAD
 version/version.go:
 	./version/version.sh > $@
 
-# Protobuf imports retain their wire-compatible upstream virtual paths.
-# protoc maps them to the source tree; third-party schemas come from Go Modules.
+# Resolve source schemas from the selected Go modules, retaining historical import names.
 PROTO_GOGO_DIR = $(shell go list -m -f '{{.Dir}}' github.com/gogo/protobuf)
 PROTO_RAFT_DIR = $(shell go list -m -f '{{.Dir}}' go.etcd.io/raft/v3)
-PROTO_INCLUDES = --proto_path=github.com/docker/swarmkit=$(ROOTDIR) --proto_path=github.com/gogo/protobuf=$(PROTO_GOGO_DIR) --proto_path=go.etcd.io/raft/v3=$(PROTO_RAFT_DIR) --proto_path=$(PROTO_GOGO_DIR) --proto_path=/usr/include
-PROTO_IMPORT_MAPS = Mgogoproto/gogo.proto=github.com/gogo/protobuf/gogoproto,Mgoogle/protobuf/any.proto=github.com/gogo/protobuf/types,Mgoogle/protobuf/descriptor.proto=github.com/gogo/protobuf/protoc-gen-gogo/descriptor,Mgoogle/protobuf/field_mask.proto=github.com/gogo/protobuf/types,Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types,Mgoogle/protobuf/duration.proto=github.com/gogo/protobuf/types,Mgoogle/protobuf/wrappers.proto=github.com/gogo/protobuf/types,Mgithub.com/docker/swarmkit/protobuf/plugin/plugin.proto=github.com/moby/swarmkit/v2/protobuf/plugin
-PROTO_OPTIONS = plugins=grpc+deepcopy+storeobject+raftproxy+authenticatedwrapper,$(PROTO_IMPORT_MAPS)
 PROTO_API = $(addprefix github.com/docker/swarmkit/,$(wildcard api/*.proto))
 PROTO_PLUGIN = github.com/docker/swarmkit/protobuf/plugin/plugin.proto
 PROTO_DEEPCOPY = github.com/docker/swarmkit/protobuf/plugin/deepcopy/test/deepcopy.proto
 PROTO_RAFTPROXY = github.com/docker/swarmkit/protobuf/plugin/raftproxy/test/service.proto
-PROTO_GENERATOR = --plugin=protoc-gen-gogoswarm=$(ROOTDIR)/bin/protoc-gen-gogoswarm
+PROTO_GENERATOR = $(ROOTDIR)/bin/swarm-protogen -root "$(ROOTDIR)" -gogo-dir "$(PROTO_GOGO_DIR)" -raft-dir "$(PROTO_RAFT_DIR)"
 
 .PHONY: setup
 setup: ## download dependencies through Go Modules
@@ -69,13 +65,11 @@ setup: ## download dependencies through Go Modules
 generate: protos ## regenerate protobuf bindings and API descriptor
 
 .PHONY: protos
-protos: setup bin/protoc-gen-gogoswarm ## regenerate protobuf bindings
-	@test "$$(protoc --version)" = "libprotoc 3.21.12" || { echo "protoc 3.21.12 is required" >&2; exit 1; }
-	@protoc $(PROTO_INCLUDES) $(PROTO_GENERATOR) --gogoswarm_out="$(PROTO_OPTIONS),import_path=github.com/moby/swarmkit/v2/api:$(ROOTDIR)" $(PROTO_API)
-	@protoc $(PROTO_INCLUDES) $(PROTO_GENERATOR) --gogoswarm_out="$(PROTO_OPTIONS),import_path=github.com/moby/swarmkit/v2/protobuf/plugin:$(ROOTDIR)" $(PROTO_PLUGIN)
-	@protoc $(PROTO_INCLUDES) $(PROTO_GENERATOR) --gogoswarm_out="$(PROTO_OPTIONS),import_path=github.com/moby/swarmkit/v2/protobuf/plugin/deepcopy/test:$(ROOTDIR)" $(PROTO_DEEPCOPY)
-	@protoc $(PROTO_INCLUDES) $(PROTO_GENERATOR) --gogoswarm_out="$(PROTO_OPTIONS),import_path=github.com/moby/swarmkit/v2/protobuf/plugin/raftproxy/test:$(ROOTDIR)" $(PROTO_RAFTPROXY)
-	@set -o pipefail; protoc $(PROTO_INCLUDES) --include_imports --descriptor_set_out=/dev/stdout $(PROTO_API) | protoc --proto_path=/usr/include --decode=google.protobuf.FileDescriptorSet google/protobuf/descriptor.proto > api/api.pb.txt
+protos: setup bin/swarm-protogen ## compile schemas and regenerate Go bindings using Go Modules
+	@$(PROTO_GENERATOR) -import-path github.com/moby/swarmkit/v2/api -descriptor api/api.pb.txt $(PROTO_API)
+	@$(PROTO_GENERATOR) -import-path github.com/moby/swarmkit/v2/protobuf/plugin $(PROTO_PLUGIN)
+	@$(PROTO_GENERATOR) -import-path github.com/moby/swarmkit/v2/protobuf/plugin/deepcopy/test $(PROTO_DEEPCOPY)
+	@$(PROTO_GENERATOR) -import-path github.com/moby/swarmkit/v2/protobuf/plugin/raftproxy/test $(PROTO_RAFTPROXY)
 
 .PHONY: checkprotos
 checkprotos: generate ## check whether protobuf outputs need regeneration

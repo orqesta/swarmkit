@@ -7,7 +7,7 @@ $ make generate
 
 Click [here](https://github.com/google/protobuf) for more information about protobuf.
 
-The `api.pb.txt` file contains merged descriptors of all defined services and messages.
+The `api.pb.txt` file contains the compiled descriptors of all defined services and messages, including imported schemas. The Go-based compiler generates the descriptor text without source locations or generator-specific changes.
 Definitions present here are considered frozen after the release.
 
 At release time, the current `api.pb.txt` file will be moved into place to

@@ -24,21 +24,22 @@ public modules against sum.golang.org, and disable automatic toolchain downloads
 
 ## Protobuf generation
 
-Generation requires `protoc` 3.21.12 and its standard schemas, supplied by
-Debian's pinned `protobuf-compiler` and `libprotobuf-dev` packages
-(3.21.12-3+deb12u1) in the development image. The generation target rejects
-other compiler versions.
-There are no manual binary downloads or installer scripts. The custom
-`protoc-gen-gogoswarm` compiler plugin is built from this repository using
-Go Modules. The gogo/protobuf schema directory is resolved from the selected
-Go module, not copied into the source tree.
+The `swarm-protogen` command compiles schemas using
+`github.com/bufbuild/protocompile` and calls the existing SwarmKit Gogo
+generator in the same Go process. All dependencies are selected by `go.mod`
+and verified by `go.sum`. Gogo, Raft and the standard Protobuf schemas are
+read from the selected Go module directories; no external Protobuf compiler,
+system header directory, binary download or installer is needed.
 
 ```sh
 make generate
+make checkprotos
 ```
 
-Regeneration retains the historical protobuf import names and checks the
-generated Go sources and API descriptor.
+The compiler preserves historical schema names, custom options and source
+locations. The generator still uses the project's existing Gogo plugins.
+The API descriptor is emitted by Go from the compiled descriptor set, without
+source locations, before generator-specific transformations.
 
 ## Debugging
 
@@ -53,8 +54,8 @@ DOCKER_SWARMKIT_USE_CONTAINER=1 make image
 DOCKER_SWARMKIT_USE_CONTAINER=1 make all
 ```
 
-The development image is explicitly built using the digest-pinned base and
-version-pinned system packages. The Makefile tags it with the current Git
+The development image is explicitly built using the digest-pinned Go base.
+No additional Protobuf packages are installed. The Makefile tags it with the current Git
 revision; container runs never pull or build an image implicitly. Rebuild the
 image explicitly when editing its build inputs locally.
 
