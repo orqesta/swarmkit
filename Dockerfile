@@ -4,12 +4,10 @@ ARG GO_VERSION=1.25
 ARG BASE_DEBIAN_DISTRO="bookworm"
 ARG GOLANG_IMAGE="golang:${GO_VERSION}-${BASE_DEBIAN_DISTRO}"
 
-ARG GOLANGCI_LINT_VERSION=v2.12.2
-
 # gobase
 FROM --platform=$BUILDPLATFORM ${GOLANG_IMAGE} AS gobase
 RUN apt-get update && apt-get install -y --no-install-recommends git make
-ENV GOWORK=off GOSUMDB=sum.golang.org GONOSUMDB=none
+ENV GOWORK=off GOSUMDB=sum.golang.org GONOSUMDB=none GOFLAGS=-mod=readonly
 WORKDIR /workspace/swarmkit
 RUN git config --global --add safe.directory /workspace/swarmkit
 
@@ -57,14 +55,14 @@ RUN --mount=type=bind,target=.,rw \
   fi
 EOT
 
-FROM golangci/golangci-lint:${GOLANGCI_LINT_VERSION} AS golangci-lint
 FROM gobase AS lint
 RUN apt-get install -y --no-install-recommends libgcc-11-dev libc6-dev
 RUN --mount=type=bind,target=. \
     --mount=type=cache,target=/root/.cache \
     --mount=type=cache,target=/go/pkg/mod \
-    --mount=from=golangci-lint,source=/usr/bin/golangci-lint,target=/usr/bin/golangci-lint <<EOT
+    <<EOT
   set -e
+  go -C tools build -o /usr/local/bin/golangci-lint github.com/golangci/golangci-lint/v2/cmd/golangci-lint
   config=$(pwd)/.golangci.yml
   golangci-lint run --config "$config" ./...
   (

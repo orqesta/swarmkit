@@ -20,11 +20,11 @@ jobs:
           cache: false
       - name: Resolve pinned Go tools
         run: |
-          mkdir tools
-          cd tools
-          go mod init github.com/moby/swarmkit/tools
+          mkdir -p tools/debug
+          cd tools/debug
+          go mod init github.com/moby/swarmkit/tools/debug
           go mod edit -go=1.25.0
-          go get -tool github.com/go-delve/delve/cmd/dlv@v1.25.2 github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
+          go get -tool github.com/go-delve/delve/cmd/dlv@v1.25.2
           go mod tidy
           go mod verify
           go mod tidy -diff

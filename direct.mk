@@ -162,4 +162,5 @@ module-validate: ## verify module integrity and module file consistency
 	@GOWORK=off go mod download
 	@GOWORK=off go mod verify
 	@cd swarmd && GOWORK=off go mod tidy -diff && GOWORK=off go mod download && GOWORK=off go mod verify
-	@git diff --exit-code HEAD -- go.mod go.sum swarmd/go.mod swarmd/go.sum
+	@cd tools && GOWORK=off go mod tidy -diff && GOWORK=off go mod download && GOWORK=off go mod verify
+	@git diff --exit-code HEAD -- go.mod go.sum swarmd/go.mod swarmd/go.sum tools/go.mod tools/go.sum

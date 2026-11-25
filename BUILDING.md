@@ -16,7 +16,7 @@ cd swarmd && GOWORK=off go mod download && GOWORK=off go test ./...
 
 The standard `Makefile` provides the `build`, `test`, `integration-tests`,
 `swarmd-tests` and `module-validate` targets. `module-validate` checks
-dependency integrity and ensures that both Go modules are tidy without editing
+dependency integrity and ensures that the application and tooling Go modules are tidy without editing
 the manifests. CI builds each module with `GOWORK=off`, so the committed
 module manifests are the source of truth. The development workspace is optional.
 
@@ -43,6 +43,7 @@ DOCKER_SWARMKIT_USE_CONTAINER=1 make
 ```
 
 The `docker-bake.hcl` validation targets run linting, module validation and
-generation validation. CI uses Go Modules for compilation and tests. The
+generation validation. GolangCI-Lint is built from the pinned Go tool module
+in `tools/`, using its committed `go.mod` and `go.sum`. CI uses Go Modules for compilation and tests. The
 container runner mounts source directly through Docker; it does not require
 `docker-sync` or shell-built command strings.
