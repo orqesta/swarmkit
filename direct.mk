@@ -24,7 +24,7 @@ PACKAGES = $(shell go list ./...)
 INTEGRATION_PACKAGE = $(shell go list ./integration)
 
 # Project binaries.
-COMMANDS=swarm-bench swarm-protogen
+COMMANDS=swarm-bench
 BINARIES=$(addprefix bin/,$(COMMANDS))
 SWARMD_COMMANDS=swarmd swarmctl swarm-rafttool
 SWARMD_BINARIES=$(addprefix swarmd/bin/,$(SWARMD_COMMANDS))
@@ -37,9 +37,6 @@ GO_TESTFLAGS=--timeout=20m $(RACE)
 .PHONY: all
 all: check binaries test integration-tests swarmd-tests ## run check, build the binaries and run the tests
 
-.PHONY: ci
-ci: check binaries checkprotos coverage coverage-integration ## to be used by the CI
-
 .PHONY: AUTHORS
 AUTHORS: .mailmap .git/HEAD
 	git log --format='%aN <%aE>' | sort -fu > $@
@@ -48,38 +45,9 @@ AUTHORS: .mailmap .git/HEAD
 version/version.go:
 	./version/version.sh > $@
 
-# Resolve source schemas from the selected Go modules, retaining historical import names.
-PROTO_GOGO_DIR = $(shell go list -m -f '{{.Dir}}' github.com/gogo/protobuf)
-PROTO_RAFT_DIR = $(shell go list -m -f '{{.Dir}}' go.etcd.io/raft/v3)
-PROTO_API = $(addprefix github.com/docker/swarmkit/,$(wildcard api/*.proto))
-PROTO_PLUGIN = github.com/docker/swarmkit/protobuf/plugin/plugin.proto
-PROTO_DEEPCOPY = github.com/docker/swarmkit/protobuf/plugin/deepcopy/test/deepcopy.proto
-PROTO_RAFTPROXY = github.com/docker/swarmkit/protobuf/plugin/raftproxy/test/service.proto
-PROTO_GENERATOR = $(ROOTDIR)/bin/swarm-protogen -root "$(ROOTDIR)" -gogo-dir "$(PROTO_GOGO_DIR)" -raft-dir "$(PROTO_RAFT_DIR)"
-
 .PHONY: setup
 setup: ## download dependencies through Go Modules
 	@go mod download
-
-.PHONY: generate
-generate: protos ## regenerate protobuf bindings and API descriptor
-
-.PHONY: protos
-protos: setup bin/swarm-protogen ## compile schemas and regenerate Go bindings using Go Modules
-	@$(PROTO_GENERATOR) -import-path github.com/moby/swarmkit/v2/api -descriptor api/api.pb.txt $(PROTO_API)
-	@$(PROTO_GENERATOR) -import-path github.com/moby/swarmkit/v2/protobuf/plugin $(PROTO_PLUGIN)
-	@$(PROTO_GENERATOR) -import-path github.com/moby/swarmkit/v2/protobuf/plugin/deepcopy/test $(PROTO_DEEPCOPY)
-	@$(PROTO_GENERATOR) -import-path github.com/moby/swarmkit/v2/protobuf/plugin/raftproxy/test $(PROTO_RAFTPROXY)
-
-.PHONY: checkprotos
-checkprotos: generate ## check whether protobuf outputs need regeneration
-	@changes=$$(git status --porcelain --untracked-files=all -- '*.pb.go' 'api/api.pb.txt') && \
-		if [ -n "$$changes" ]; then \
-			printf '%s\n' "$$changes" >&2; \
-			git --no-pager diff -- '*.pb.go' 'api/api.pb.txt'; \
-			echo "please run 'make generate' when making changes to proto files" >&2; \
-			exit 1; \
-		fi
 
 .PHONY: check
 check: fmt-proto
@@ -164,7 +132,7 @@ help: ## this help
 
 .PHONY: module-validate
 module-validate: ## verify module integrity and module file consistency
-	@tracked_legacy=$$(git ls-files -- ':(glob)**/vendor/**' ':(glob)**/go.work' ':(glob)**/go.work.sum') && test -z "$$tracked_legacy"
+	@tracked_legacy=$$(git ls-files -- ':(glob)**/vendor/**' ':(glob)**/go.work' ':(glob)**/go.work.sum' 'api/api.pb.txt' ':(glob)protobuf/plugin/**/testdata/**/*.pb.go' ':(glob)protobuf/plugin/**/testdata/**/*pb_test.go') && test -z "$$tracked_legacy"
 	@git ls-files --error-unmatch go.mod go.sum swarmd/go.mod swarmd/go.sum tools/go.mod tools/go.sum tools/debug/go.mod tools/debug/go.sum >/dev/null
 	@go mod tidy -diff
 	@go mod download

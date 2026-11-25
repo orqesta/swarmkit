@@ -12,26 +12,42 @@ RUN --mount=type=bind,target=. \
     --mount=type=cache,target=/go/pkg/mod \
     make --file=direct.mk module-validate
 
-FROM gobase AS generate-build
-RUN --mount=type=bind,target=.,rw \
-    --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.cache <<EOT
-  set -ex
-  make generate
-  mkdir /out
-  git ls-files -m --others --exclude-standard -z -- '*.pb.go' 'api/api.pb.txt' > /tmp/generated-files
-  tar --null -T /tmp/generated-files -cf /tmp/generated.tar
-  tar -C /out -xf /tmp/generated.tar
-EOT
+# protoc is a build compiler provided by the base distribution.
+# Go dependencies and the generator plugin remain managed through Go Modules.
+FROM gobase AS generate-base
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    protobuf-compiler=3.21.12-3+deb12u1 \
+    libprotobuf-dev=3.21.12-3+deb12u1 \
+    libprotobuf32=3.21.12-3+deb12u1 \
+    libprotobuf-lite32=3.21.12-3+deb12u1 \
+    libprotoc32=3.21.12-3+deb12u1 \
+    zlib1g-dev=1:1.2.13.dfsg-1 \
+    && rm -rf /var/lib/apt/lists/*
+
+FROM generate-base AS generate-build
+COPY . .
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache \
+    make --file=protobuf.mk generate
+
+FROM generate-build AS generate-export
+RUN mkdir /out && cp --parents api/*.pb.go protobuf/plugin/plugin.pb.go /out
 
 FROM scratch AS generate-update
-COPY --from=generate-build /out /
+COPY --from=generate-export /out /
 
-FROM gobase AS generate-validate
-RUN --mount=type=bind,target=.,rw \
-    --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.cache \
-    make checkprotos
+FROM generate-build AS generate-validate
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache <<EOT
+  set -eu
+  changes=$(git status --porcelain --untracked-files=all -- 'api/*.pb.go' 'protobuf/plugin/plugin.pb.go')
+  if [ -n "$changes" ]; then
+    printf '%s\n' "$changes" >&2
+    git --no-pager diff -- 'api/*.pb.go' 'protobuf/plugin/plugin.pb.go'
+    exit 1
+  fi
+  go test ./protobuf/plugin/deepcopy/testdata/test ./protobuf/plugin/raftproxy/testdata/test
+EOT
 
 FROM gobase AS lint
 RUN --mount=type=bind,target=. \

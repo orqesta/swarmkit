@@ -1,7 +1,5 @@
 IMAGE_NAME ?= orqesta/swarmkit:$(shell git rev-parse HEAD)
 DOCKER_IMAGE_DIR = /workspace/swarmkit
-BUILDX_CMD ?= docker buildx
-.DEFAULT_GOAL := all
 
 # Run builds with the source mounted directly. Dependencies are resolved by
 # Go Modules inside the container; no additional sync service is required.
@@ -39,6 +37,3 @@ lint:
 module-validate:
 	$(BUILDX_CMD) bake module-validate
 
-.PHONY: generate-validate
-generate-validate:
-	$(BUILDX_CMD) bake generate-validate

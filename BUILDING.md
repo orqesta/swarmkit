@@ -24,22 +24,23 @@ public modules against sum.golang.org, and disable automatic toolchain downloads
 
 ## Protobuf generation
 
-The `swarm-protogen` command compiles schemas using
-`github.com/bufbuild/protocompile` and calls the existing SwarmKit Gogo
-generator in the same Go process. All dependencies are selected by `go.mod`
-and verified by `go.sum`. Gogo, Raft and the standard Protobuf schemas are
-read from the selected Go module directories; no external Protobuf compiler,
-system header directory, binary download or installer is needed.
+The official `protoc` compiler and its standard schemas are provisioned only
+in the isolated Docker Buildx generation stage from version-pinned Debian
+packages. The project-owned Go plugin is compiled in that stage using Go
+Modules. Gogo and Raft schemas are resolved directly from their selected
+modules. The development image does not contain the Protobuf compiler.
 
 ```sh
 make generate
-make checkprotos
+make generate-validate
 ```
 
-The compiler preserves historical schema names, custom options and source
-locations. The generator still uses the project's existing Gogo plugins.
-The API descriptor is emitted by Go from the compiled descriptor set, without
-source locations, before generator-specific transformations.
+Generation exports only the API and plugin Go bindings required by consumers
+of the SwarmKit Go module. Go does not generate source files when importing a
+module, so these bindings remain versioned. The API descriptor, generator
+binary and generated test fixtures exist only inside the generation build.
+The validation target checks the distributed bindings and executes the
+generated deepcopy and raftproxy tests in that same isolated environment.
 
 ## Debugging
 
@@ -54,8 +55,8 @@ DOCKER_SWARMKIT_USE_CONTAINER=1 make image
 DOCKER_SWARMKIT_USE_CONTAINER=1 make all
 ```
 
-The development image is explicitly built using the digest-pinned Go base.
-No additional Protobuf packages are installed. The Makefile tags it with the current Git
+The development image is explicitly built using the digest-pinned base and
+Go build inputs. The Makefile tags it with the current Git
 revision; container runs never pull or build an image implicitly. Rebuild the
 image explicitly when editing its build inputs locally.
 

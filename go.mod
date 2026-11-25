@@ -6,7 +6,6 @@ require (
 	code.cloudfoundry.org/clock v1.1.0
 	github.com/Microsoft/go-winio v0.6.2
 	github.com/bits-and-blooms/bitset v1.25.0
-	github.com/bufbuild/protocompile v0.14.1
 	github.com/cloudflare/cfssl v1.6.4
 	github.com/container-storage-interface/spec v1.2.0
 	github.com/distribution/reference v0.5.0
@@ -77,7 +76,6 @@ require (
 	go.uber.org/zap v1.27.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/net v0.51.0 // indirect
-	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.42.0 // indirect
 	golang.org/x/text v0.35.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20251202230838-ff82c1b0f217 // indirect
