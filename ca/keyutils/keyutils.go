@@ -114,7 +114,7 @@ func (u *utils) EncryptPEMBlock(data, password []byte) (*pem.Block, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &pem.Block{Type: "ENCRYPTED PRIVATE KEY", Bytes: der}, nil
+		return &pem.Block{Type: "ENCRYPTED PRIVATE KEY", Headers: map[string]string{}, Bytes: der}, nil
 	} else if u.fips {
 		return nil, ErrFIPSUnsupportedKeyFormat
 	}

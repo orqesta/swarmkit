@@ -1,3 +1,8 @@
+export GOWORK := off
+export GOFLAGS := -mod=readonly
+export GOSUMDB := sum.golang.org
+export GONOSUMDB := none
+
 # Base path used to install.
 DESTDIR=/usr/local
 
@@ -20,9 +25,6 @@ SWARMD_BINARIES=$(addprefix swarmd/bin/,$(SWARMD_COMMANDS))
 VERSIONPKG := $(shell go list ./version)
 GO_LDFLAGS=-ldflags "-X $(VERSIONPKG).Version=$(VERSION)"
 GO_TESTFLAGS=--timeout=20m $(RACE)
-
-export GOWORK := off
-export GOFLAGS := -mod=readonly
 
 .DEFAULT_GOAL = all
 .PHONY: all
@@ -109,7 +111,7 @@ integration-tests: ## run integration tests
 .PHONY: swarmd-tests
 swarmd-tests: ## run swarmd tests
 	@echo "🐳 $@"
-	@cd swarmd && GOWORK=off go test -parallel 8 ${GO_TESTFLAGS} -tags "${DOCKER_BUILDTAGS}" ./...
+	@cd swarmd && go test -parallel 8 ${GO_TESTFLAGS} -tags "${DOCKER_BUILDTAGS}" ./...
 
 # Build a binary from a cmd.
 bin/%: cmd/% .FORCE
@@ -118,7 +120,7 @@ bin/%: cmd/% .FORCE
 
 swarmd/bin/%: swarmd/cmd/% .FORCE
 	@echo "🐳 $@"
-	@cd swarmd && GOWORK=off go build -tags "${DOCKER_BUILDTAGS}" -o ../$@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ../$<
+	@cd swarmd && go build -tags "${DOCKER_BUILDTAGS}" -o ../$@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ../$<
 
 .PHONY: .FORCE
 .FORCE:
@@ -162,10 +164,10 @@ help: ## this help
 .PHONY: module-validate
 module-validate: ## verify module integrity and module file consistency
 	@tracked_vendor=$$(git ls-files -- ':(glob)**/vendor/**') && test -z "$$tracked_vendor"
-	@GOWORK=off go mod tidy -diff
-	@GOWORK=off go mod download
-	@GOWORK=off go mod verify
-	@cd swarmd && GOWORK=off go mod tidy -diff && GOWORK=off go mod download && GOWORK=off go mod verify
-	@cd tools && GOWORK=off go mod tidy -diff && GOWORK=off go mod download && GOWORK=off go mod verify
+	@go mod tidy -diff
+	@go mod download
+	@go mod verify
+	@cd swarmd && go mod tidy -diff && go mod download && go mod verify
+	@cd tools && go mod tidy -diff && go mod download && go mod verify
 	@cd tools/debug && go mod tidy -diff && go mod download && go mod verify
 	@git diff --exit-code HEAD -- go.mod go.sum swarmd/go.mod swarmd/go.sum tools/go.mod tools/go.sum tools/debug/go.mod tools/debug/go.sum

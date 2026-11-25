@@ -18,7 +18,7 @@ Certificate retry jitter remains independent of the event transport in `ca/backo
 
 ## Go dependencies and repository state
 
-The repository declares dependencies in `go.mod` and records their checksums in `go.sum`. The local event dependency is pinned there. **The fork currently still tracks a `vendor/` directory and related inherited validation.** A move to exclusively module-cache dependency resolution requires its own implementation and CI verification; it must not be inferred from the event transport migration.
+The application modules and Go-based development tools declare their dependencies in their respective `go.mod` files and commit the corresponding `go.sum` files. The local event dependency remains pinned. Builds resolve Go packages through the module cache with read-only manifests and checksum database verification. The repository no longer tracks vendored Go libraries or a separate workspace dependency graph. The Protobuf compiler and its standard schemas are operating-system build dependencies.
 
 ## Integration boundary
 
