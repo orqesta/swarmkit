@@ -1,5 +1,5 @@
 variable "IMAGE_NAME" {
-  default = "orqesta/swarmkit"
+  default = "orqesta/swarmkit:dev"
 }
 
 target "dev" {

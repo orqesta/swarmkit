@@ -16,11 +16,16 @@ permissions:
 
 env:
   DOCKER_SWARMKIT_USE_CONTAINER: "1"
-  IMAGE_NAME: orqesta/swarmkit
+  IMAGE_NAME: orqesta/swarmkit:${{ github.sha }}
   GOWORK: "off"
   GOSUMDB: sum.golang.org
   GONOSUMDB: none
   GOFLAGS: -mod=readonly
+  GOTOOLCHAIN: local
+  GOPROXY: https://proxy.golang.org
+  GOPRIVATE: ""
+  GONOPROXY: none
+  GOINSECURE: ""
 
 jobs:
   stop-first-regression:

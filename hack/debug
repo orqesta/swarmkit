@@ -8,5 +8,8 @@ fi
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 mkdir -p "$root/bin"
-GOWORK=off GOFLAGS=-mod=readonly go -C "$root/tools/debug" build -o "$root/bin/dlv" github.com/go-delve/delve/cmd/dlv
+export GOWORK=off GOFLAGS=-mod=readonly GOTOOLCHAIN=local
+export GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org
+export GOPRIVATE="" GONOPROXY=none GONOSUMDB=none GOINSECURE=""
+go -C "$root/tools/debug" build -o "$root/bin/dlv" github.com/go-delve/delve/cmd/dlv
 exec "$root/bin/dlv" test --accept-multiclient --headless --listen=":${DOCKER_SWARMKIT_DELVE_PORT:-2345}" --api-version=2 --log "$@"

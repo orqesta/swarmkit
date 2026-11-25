@@ -96,9 +96,8 @@ Some of *SwarmKit*'s main features are:
 
 Requirements:
 
--   Go 1.25 or higher
--   A [working golang](https://golang.org/doc/code.html) environment
--   [Protobuf 3.x or higher](https://developers.google.com/protocol-buffers/docs/downloads) to regenerate protocol buffer files (e.g. using `make generate`)
+-   Go 1.25 or later, installed locally
+-   Protobuf compiler 3.21.12 and its standard schemas, only for `make generate`
 
 *SwarmKit* is built in Go and leverages a standard project structure to work well with Go tooling.
 If you are new to Go, please see [BUILDING.md](BUILDING.md) for a more detailed guide.

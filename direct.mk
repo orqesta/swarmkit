@@ -1,7 +1,14 @@
+SHELL := /bin/bash
+
 export GOWORK := off
 export GOFLAGS := -mod=readonly
+export GOTOOLCHAIN := local
+export GOPROXY := https://proxy.golang.org
 export GOSUMDB := sum.golang.org
+export GOPRIVATE :=
+export GONOPROXY := none
 export GONOSUMDB := none
+export GOINSECURE :=
 
 # Base path used to install.
 DESTDIR=/usr/local
@@ -22,7 +29,7 @@ BINARIES=$(addprefix bin/,$(COMMANDS))
 SWARMD_COMMANDS=swarmd swarmctl swarm-rafttool
 SWARMD_BINARIES=$(addprefix swarmd/bin/,$(SWARMD_COMMANDS))
 
-VERSIONPKG := $(shell go list ./version)
+VERSIONPKG = $(shell go list ./version)
 GO_LDFLAGS=-ldflags "-X $(VERSIONPKG).Version=$(VERSION)"
 GO_TESTFLAGS=--timeout=20m $(RACE)
 
@@ -59,16 +66,16 @@ setup: ## download dependencies through Go Modules
 	@go mod download
 
 .PHONY: generate
-generate: protos ## regenerate protobuf code and go:generate outputs
-	@go generate -x $(PACKAGES)
+generate: protos ## regenerate protobuf bindings and API descriptor
 
 .PHONY: protos
 protos: setup bin/protoc-gen-gogoswarm ## regenerate protobuf bindings
+	@test "$$(protoc --version)" = "libprotoc 3.21.12" || { echo "protoc 3.21.12 is required" >&2; exit 1; }
 	@protoc $(PROTO_INCLUDES) $(PROTO_GENERATOR) --gogoswarm_out="$(PROTO_OPTIONS),import_path=github.com/moby/swarmkit/v2/api:$(ROOTDIR)" $(PROTO_API)
 	@protoc $(PROTO_INCLUDES) $(PROTO_GENERATOR) --gogoswarm_out="$(PROTO_OPTIONS),import_path=github.com/moby/swarmkit/v2/protobuf/plugin:$(ROOTDIR)" $(PROTO_PLUGIN)
 	@protoc $(PROTO_INCLUDES) $(PROTO_GENERATOR) --gogoswarm_out="$(PROTO_OPTIONS),import_path=github.com/moby/swarmkit/v2/protobuf/plugin/deepcopy/test:$(ROOTDIR)" $(PROTO_DEEPCOPY)
 	@protoc $(PROTO_INCLUDES) $(PROTO_GENERATOR) --gogoswarm_out="$(PROTO_OPTIONS),import_path=github.com/moby/swarmkit/v2/protobuf/plugin/raftproxy/test:$(ROOTDIR)" $(PROTO_RAFTPROXY)
-	@protoc $(PROTO_INCLUDES) --include_imports --descriptor_set_out=/dev/stdout $(PROTO_API) | protoc --proto_path=/usr/include --decode=google.protobuf.FileDescriptorSet google/protobuf/descriptor.proto > api/api.pb.txt
+	@set -o pipefail; protoc $(PROTO_INCLUDES) --include_imports --descriptor_set_out=/dev/stdout $(PROTO_API) | protoc --proto_path=/usr/include --decode=google.protobuf.FileDescriptorSet google/protobuf/descriptor.proto > api/api.pb.txt
 
 .PHONY: checkprotos
 checkprotos: generate ## check whether protobuf outputs need regeneration
@@ -88,7 +95,7 @@ check: ## Run various source code validation tools
 
 .PHONY: fmt-proto
 fmt-proto:
-	@test -z "$$(find . ! -name timestamp.proto ! -name duration.proto -name '*.proto' -type f -exec grep -Hn -e "^ " {} \; | tee /dev/stderr)" || \
+	@test -z "$$(find . -name '*.proto' -type f -exec grep -Hn -e "^ " {} \; | tee /dev/stderr)" || \
 		(echo "👹 please indent proto files with tabs only" && false)
 	@test -z "$$(find . -name '*.proto' -type f -exec grep -Hn "Meta meta = " {} \; | grep -v '(gogoproto.nullable) = false' | tee /dev/stderr)" || \
 		(echo "👹 meta fields in proto files must have option (gogoproto.nullable) = false" && false)
@@ -163,7 +170,8 @@ help: ## this help
 
 .PHONY: module-validate
 module-validate: ## verify module integrity and module file consistency
-	@tracked_vendor=$$(git ls-files -- ':(glob)**/vendor/**') && test -z "$$tracked_vendor"
+	@tracked_legacy=$$(git ls-files -- ':(glob)**/vendor/**' ':(glob)**/go.work' ':(glob)**/go.work.sum') && test -z "$$tracked_legacy"
+	@git ls-files --error-unmatch go.mod go.sum swarmd/go.mod swarmd/go.sum tools/go.mod tools/go.sum tools/debug/go.mod tools/debug/go.sum >/dev/null
 	@go mod tidy -diff
 	@go mod download
 	@go mod verify

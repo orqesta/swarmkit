@@ -3,7 +3,7 @@
 To get started, build and install the go program in this directory:
 
 ```
-$ GOWORK=off go install .
+$ GOWORK=off GOFLAGS=-mod=readonly GOTOOLCHAIN=local GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org GOPRIVATE='' GONOPROXY=none GONOSUMDB=none GOINSECURE='' go install .
 ```
 
 Now, run `external-ca-example`:

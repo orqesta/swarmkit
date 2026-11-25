@@ -1,13 +1,9 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1@sha256:572cebbc2b15e6f84c077742952674889cb63cd5e9b80abdffcbe587b6f19183
 
-ARG GO_VERSION=1.25
-ARG BASE_DEBIAN_DISTRO="bookworm"
-ARG GOLANG_IMAGE="golang:${GO_VERSION}-${BASE_DEBIAN_DISTRO}"
-
-# gobase
-FROM --platform=$BUILDPLATFORM ${GOLANG_IMAGE} AS gobase
-RUN apt-get update && apt-get install -y --no-install-recommends git make
-ENV GOWORK=off GOSUMDB=sum.golang.org GONOSUMDB=none GOFLAGS=-mod=readonly
+FROM --platform=$BUILDPLATFORM golang:1.25-bookworm@sha256:3b4a11519ad929d1e1d261a12cff056f0c85b735253d7d861346b9c6f8b36437 AS gobase
+ENV GOWORK=off GOFLAGS=-mod=readonly GOTOOLCHAIN=local \
+    GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org \
+    GOPRIVATE="" GONOPROXY=none GONOSUMDB=none GOINSECURE=""
 WORKDIR /workspace/swarmkit
 RUN git config --global --add safe.directory /workspace/swarmkit
 
@@ -19,7 +15,14 @@ RUN --mount=type=bind,target=. \
 # protoc is a build compiler provided by the base distribution.
 # Go dependencies and the generator plugin remain managed through Go Modules.
 FROM gobase AS generate-base
-RUN apt-get update && apt-get install -y --no-install-recommends protobuf-compiler libprotobuf-dev
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    protobuf-compiler=3.21.12-3+deb12u1 \
+    libprotobuf-dev=3.21.12-3+deb12u1 \
+    libprotobuf32=3.21.12-3+deb12u1 \
+    libprotobuf-lite32=3.21.12-3+deb12u1 \
+    libprotoc32=3.21.12-3+deb12u1 \
+    zlib1g-dev=1:1.2.13.dfsg-1 \
+    && rm -rf /var/lib/apt/lists/*
 
 FROM generate-base AS generate-build
 RUN --mount=type=bind,target=.,rw \
@@ -28,30 +31,21 @@ RUN --mount=type=bind,target=.,rw \
   set -ex
   make generate
   mkdir /out
-  git ls-files -m --others -- '**/*.pb.go' 'api/api.pb.txt' | tar -cf - --files-from - | tar -C /out -xf -
+  git ls-files -m --others --exclude-standard -z -- '*.pb.go' 'api/api.pb.txt' > /tmp/generated-files
+  tar --null -T /tmp/generated-files -cf /tmp/generated.tar
+  tar -C /out -xf /tmp/generated.tar
 EOT
 
 FROM scratch AS generate-update
 COPY --from=generate-build /out /
 
-FROM gobase AS generate-validate
+FROM generate-base AS generate-validate
 RUN --mount=type=bind,target=.,rw \
-    --mount=type=bind,from=generate-build,source=/out,target=/generated <<EOT
-  set -e
-  git add -A
-  if [ "$(ls -A /generated)" ]; then
-    cp -rf /generated/* .
-  fi
-  diff=$(git status --porcelain -- '**/*.pb.go' 'api/api.pb.txt')
-  if [ -n "$diff" ]; then
-    echo >&2 'ERROR: The result of "go generate" differs. Please update with "make generate"'
-    echo "$diff"
-    exit 1
-  fi
-EOT
+    --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache \
+    make checkprotos
 
 FROM gobase AS lint
-RUN apt-get install -y --no-install-recommends libgcc-11-dev libc6-dev
 RUN --mount=type=bind,target=. \
     --mount=type=cache,target=/root/.cache \
     --mount=type=cache,target=/go/pkg/mod \

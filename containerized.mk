@@ -1,13 +1,13 @@
-IMAGE_NAME=orqesta/swarmkit
+IMAGE_NAME ?= orqesta/swarmkit:$(shell git rev-parse HEAD)
 DOCKER_IMAGE_DIR = /workspace/swarmkit
 BUILDX_CMD ?= docker buildx
+.DEFAULT_GOAL := all
 
 # Run builds with the source mounted directly. Dependencies are resolved by
 # Go Modules inside the container; no additional sync service is required.
 %::
 	@echo "Running target $@ inside a container"
-	@$(MAKE) ensure_image_exists
-	@docker run --rm -t \
+	@docker run --pull=never --rm -t \
 		--volume "swarmkit-mod-cache:/go/pkg/mod" \
 		--volume "$(ROOTDIR):$(DOCKER_IMAGE_DIR)" \
 		--workdir "$(DOCKER_IMAGE_DIR)" \
@@ -15,8 +15,8 @@ BUILDX_CMD ?= docker buildx
 		"$(IMAGE_NAME)" make "$@"
 
 .PHONY: shell
-shell: ensure_image_exists
-	@docker run --rm -it \
+shell:
+	@docker run --pull=never --rm -it \
 		--volume "swarmkit-mod-cache:/go/pkg/mod" \
 		--volume "$(ROOTDIR):$(DOCKER_IMAGE_DIR)" \
 		--workdir "$(DOCKER_IMAGE_DIR)" \
@@ -25,11 +25,7 @@ shell: ensure_image_exists
 
 .PHONY: image
 image:
-	docker build -t "$(IMAGE_NAME)" .
-
-.PHONY: ensure_image_exists
-ensure_image_exists:
-	@docker image inspect "$(IMAGE_NAME)" >/dev/null 2>&1 || $(MAKE) image
+	IMAGE_NAME="$(IMAGE_NAME)" $(BUILDX_CMD) bake dev
 
 .PHONY: fmt-proto
 fmt-proto:
