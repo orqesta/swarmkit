@@ -21,6 +21,9 @@ VERSIONPKG := $(shell go list ./version)
 GO_LDFLAGS=-ldflags "-X $(VERSIONPKG).Version=$(VERSION)"
 GO_TESTFLAGS=--timeout=20m $(RACE)
 
+export GOWORK := off
+export GOFLAGS := -mod=readonly
+
 .DEFAULT_GOAL = all
 .PHONY: all
 all: check binaries test integration-tests swarmd-tests ## run check, build the binaries and run the tests
@@ -127,7 +130,7 @@ binaries: $(BINARIES) $(SWARMD_BINARIES) ## build binaries
 .PHONY: clean
 clean: ## clean up binaries
 	@echo "🐳 $@"
-	@rm -f $(BINARIES) $(SWARMD_BINARIES)
+	@rm -f $(BINARIES) $(SWARMD_BINARIES) bin/dlv
 
 .PHONY: install
 install: $(BINARIES) $(SWARMD_BINARIES) ## install binaries
@@ -163,4 +166,5 @@ module-validate: ## verify module integrity and module file consistency
 	@GOWORK=off go mod verify
 	@cd swarmd && GOWORK=off go mod tidy -diff && GOWORK=off go mod download && GOWORK=off go mod verify
 	@cd tools && GOWORK=off go mod tidy -diff && GOWORK=off go mod download && GOWORK=off go mod verify
-	@git diff --exit-code HEAD -- go.mod go.sum swarmd/go.mod swarmd/go.sum tools/go.mod tools/go.sum
+	@cd tools/debug && go mod tidy -diff && go mod download && go mod verify
+	@git diff --exit-code HEAD -- go.mod go.sum swarmd/go.mod swarmd/go.sum tools/go.mod tools/go.sum tools/debug/go.mod tools/debug/go.sum

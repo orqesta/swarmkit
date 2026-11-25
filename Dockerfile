@@ -16,11 +16,6 @@ RUN --mount=type=bind,target=. \
     --mount=type=cache,target=/go/pkg/mod \
     make --file=direct.mk module-validate
 
-FROM gobase AS protoc-gen-gogoswarm
-RUN --mount=type=bind,target=.,rw \
-    --mount=type=cache,target=/root/.cache \
-    make bin/protoc-gen-gogoswarm && mv bin/protoc-gen-gogoswarm /usr/local/bin/
-
 # protoc is a build compiler provided by the base distribution.
 # Go dependencies and the generator plugin remain managed through Go Modules.
 FROM gobase AS generate-base
@@ -29,7 +24,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends protobuf-compil
 FROM generate-base AS generate-build
 RUN --mount=type=bind,target=.,rw \
     --mount=type=cache,target=/go/pkg/mod \
-    --mount=from=protoc-gen-gogoswarm,source=/usr/local/bin/protoc-gen-gogoswarm,target=/usr/bin/protoc-gen-gogoswarm <<EOT
+    --mount=type=cache,target=/root/.cache <<EOT
   set -ex
   make generate
   mkdir /out

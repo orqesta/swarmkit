@@ -36,6 +36,12 @@ make generate
 Regeneration retains the historical protobuf import names and checks the
 generated Go sources and API descriptor.
 
+## Debugging
+
+Delve is a pinned Go tool in `tools/debug/`. Run `hack/debug` with the test
+package and arguments; it builds Delve using the committed module manifests
+and starts a headless debugging session without installing a global binary.
+
 ## Container build
 
 ```sh
