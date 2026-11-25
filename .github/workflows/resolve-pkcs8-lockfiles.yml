@@ -1,15 +1,16 @@
-name: Resolve PKCS8 module lockfiles
+name: Verify dependency migration
 on:
   pull_request:
 permissions:
   contents: read
 jobs:
-  lockfiles:
+  audit:
     if: github.head_ref == 'refactor/go-modules-no-vendor'
     runs-on: ubuntu-22.04
     timeout-minutes: 25
     env:
       GOWORK: "off"
+      GOFLAGS: -mod=readonly
       GOSUMDB: sum.golang.org
       GONOSUMDB: none
     steps:
@@ -18,24 +19,17 @@ jobs:
         with:
           go-version-file: go.mod
           cache: false
-      - name: Generate and verify module manifests
+      - name: Audit remaining dependency references
         run: |
-          go get github.com/emmansun/gmsm/pkcs@v0.43.0
-          go mod tidy
-          go mod verify
-          go mod tidy -diff
-          sed 's/^/ROOTMOD:/' go.mod
-          sed 's/^/ROOTSUM:/' go.sum
-          cd swarmd
-          go mod tidy
-          go mod verify
-          go mod tidy -diff
-          sed 's/^/SWARMDMOD:/' go.mod
-          sed 's/^/SWARMDSUM:/' go.sum
-      - name: Validate cryptographic key compatibility
-        run: |
+          git ls-files -- ':(glob)**/vendor/**'
+          git grep -n -i -E 'hard fork|forked from|copied from|adapted from|vendored|vendor/|go:generate|go (get|install|run).*(@latest|-u)|GOSUMDB.?off|GONOSUMDB=.*\*|protobuild|docker-sync|gopath' -- ':!*.sum' ':!*.pb.go' ':!api/api.pb.txt' ':!.github/workflows/resolve-pkcs8-lockfiles.yml' || test "$?" -eq 1
           if git grep -n 'github.com/moby/swarmkit/v2/ca/pkcs8' -- '*.go'; then
             exit 1
           fi
+          gofmt -l ca/keyutils/keyutils.go ca/keyutils/pkcs8_test.go ca/keyreadwriter.go ca/keyreadwriter_test.go ca/certificates.go ca/testutils/cautils.go
+      - name: Verify native modules
+        run: make module-validate
+      - name: Validate cryptographic key compatibility
+        run: |
           go test -count=1 ./ca/keyutils
           go test -count=1 ./ca/...

@@ -32,5 +32,3 @@ bin/swarmkitstate
 # ignore code coverage output
 *coverage.txt
 
-# Third-party dependencies are resolved through Go Modules, not vendor.
-/vendor/

@@ -10,6 +10,7 @@ BUILDX_CMD ?= docker buildx
 	@docker run --rm -t \
 		--volume "swarmkit-mod-cache:/go/pkg/mod" \
 		--volume "$(ROOTDIR):$(DOCKER_IMAGE_DIR)" \
+		--workdir "$(DOCKER_IMAGE_DIR)" \
 		$(DOCKER_SWARMKIT_DOCKER_RUN_FLAGS) \
 		"$(IMAGE_NAME)" make "$@"
 
@@ -18,6 +19,7 @@ shell: ensure_image_exists
 	@docker run --rm -it \
 		--volume "swarmkit-mod-cache:/go/pkg/mod" \
 		--volume "$(ROOTDIR):$(DOCKER_IMAGE_DIR)" \
+		--workdir "$(DOCKER_IMAGE_DIR)" \
 		$(DOCKER_SWARMKIT_DOCKER_RUN_FLAGS) \
 		"$(IMAGE_NAME)" bash
 

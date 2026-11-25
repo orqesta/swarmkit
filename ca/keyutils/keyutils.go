@@ -46,13 +46,13 @@ func IsPKCS8(derBytes []byte) bool {
 		return true
 	}
 
-	_, encrypted := encryptedPKCS8(derBytes)
+	_, encrypted := parseEncryptedPKCS8(derBytes)
 	return encrypted
 }
 
 // IsEncryptedPEMBlock checks if a PKCS#1 or PKCS#8 PEM-block is encrypted or not
 func IsEncryptedPEMBlock(block *pem.Block) bool {
-	_, encrypted := encryptedPKCS8(block.Bytes)
+	_, encrypted := parseEncryptedPKCS8(block.Bytes)
 	return encrypted || x509.IsEncryptedPEMBlock(block)
 }
 
@@ -66,7 +66,7 @@ func (u *utils) ParsePrivateKeyPEMWithPassword(pemBytes, password []byte) (crypt
 
 	if IsPKCS8(block.Bytes) {
 		der := block.Bytes
-		if _, encrypted := encryptedPKCS8(der); encrypted {
+		if _, encrypted := parseEncryptedPKCS8(der); encrypted {
 			var err error
 			der, err = decryptPKCS8(der, password)
 			if err != nil {
@@ -133,7 +133,7 @@ type encryptedPrivateKeyInfo struct {
 	EncryptedData       []byte
 }
 
-func encryptedPKCS8(der []byte) (encryptedPrivateKeyInfo, bool) {
+func parseEncryptedPKCS8(der []byte) (encryptedPrivateKeyInfo, bool) {
 	var info encryptedPrivateKeyInfo
 	rest, err := asn1.Unmarshal(der, &info)
 	return info, err == nil && len(rest) == 0 && len(info.EncryptionAlgorithm.Algorithm) != 0
@@ -142,7 +142,7 @@ func encryptedPKCS8(der []byte) (encryptedPrivateKeyInfo, bool) {
 // decryptPKCS8 enforces SwarmKit's existing PBES2/PBKDF2/AES-256-CBC policy.
 // Key derivation, cipher operations and padding validation are delegated to pkcs.
 func decryptPKCS8(der, password []byte) ([]byte, error) {
-	info, ok := encryptedPKCS8(der)
+	info, ok := parseEncryptedPKCS8(der)
 	if !ok || !pkcs.IsPBES2(info.EncryptionAlgorithm) {
 		return nil, errors.New("pkcs8: only PBES2 supported")
 	}

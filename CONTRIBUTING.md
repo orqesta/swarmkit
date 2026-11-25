@@ -354,8 +354,7 @@ mind when nudging others to comply.
 The rules:
 
 1. All code should be formatted with `gofmt -s`.
-2. All code should pass the default levels of
-   [`golint`](https://github.com/golang/lint).
+2. All code should pass `DOCKER_SWARMKIT_USE_CONTAINER=1 make lint`.
 3. All code should follow the guidelines covered in [Effective
    Go](http://golang.org/doc/effective_go.html) and [Go Code Review
    Comments](https://github.com/golang/go/wiki/CodeReviewComments).

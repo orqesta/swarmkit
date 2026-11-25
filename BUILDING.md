@@ -18,7 +18,8 @@ The standard `Makefile` provides the `build`, `test`, `integration-tests`,
 `swarmd-tests` and `module-validate` targets. `module-validate` checks
 dependency integrity and ensures that the application and tooling Go modules are tidy without editing
 the manifests. CI builds each module with `GOWORK=off`, so the committed
-module manifests are the source of truth. The development workspace is optional.
+module manifests are the source of truth; the repository does not commit an
+alternative workspace dependency graph.
 
 ## Protobuf generation
 

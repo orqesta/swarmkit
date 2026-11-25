@@ -161,6 +161,7 @@ help: ## this help
 
 .PHONY: module-validate
 module-validate: ## verify module integrity and module file consistency
+	@tracked_vendor=$$(git ls-files -- ':(glob)**/vendor/**') && test -z "$$tracked_vendor"
 	@GOWORK=off go mod tidy -diff
 	@GOWORK=off go mod download
 	@GOWORK=off go mod verify
