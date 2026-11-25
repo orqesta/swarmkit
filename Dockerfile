@@ -76,16 +76,9 @@ FROM gobase AS fmt-proto
 RUN --mount=type=bind,target=. \
     make fmt-proto
 
-# use generate-base to have protoc available
 FROM generate-base
-ENV GO111MODULE=on
-# install the dependencies from `make setup`
-# we only copy `direct.mk` to avoid busting the cache too easily
 COPY direct.mk .
 COPY go.* .
 RUN make --file=direct.mk setup
-# now we can copy the rest
 COPY . .
-# default to just `make`. If you want to change the default command, change the
-# default make command, not this command.
 CMD ["make"]

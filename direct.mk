@@ -68,11 +68,14 @@ protos: setup bin/protoc-gen-gogoswarm ## regenerate protobuf bindings
 	@protoc $(PROTO_INCLUDES) --include_imports --descriptor_set_out=/dev/stdout $(PROTO_API) | protoc --proto_path=/usr/include --decode=google.protobuf.FileDescriptorSet google/protobuf/descriptor.proto > api/api.pb.txt
 
 .PHONY: checkprotos
-checkprotos: generate ## check if protobufs needs to be generated again
-	@echo "🐳 $@"
-	@test -z "$$(git status --short | grep ".pb.go" | tee /dev/stderr)" || \
-		((git diff | cat) && \
-		(echo "👹 please run 'make generate' when making changes to proto files" && false))
+checkprotos: generate ## check whether protobuf outputs need regeneration
+	@changes=$$(git status --porcelain --untracked-files=all -- '*.pb.go' 'api/api.pb.txt') && \
+		if [ -n "$$changes" ]; then \
+			printf '%s\n' "$$changes" >&2; \
+			git --no-pager diff -- '*.pb.go' 'api/api.pb.txt'; \
+			echo "please run 'make generate' when making changes to proto files" >&2; \
+			exit 1; \
+		fi
 
 .PHONY: check
 check: fmt-proto
