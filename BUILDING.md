@@ -1,114 +1,80 @@
-## Build the development environment
+# Building SwarmKit
 
-To build Swarmkit, you must set up a Go development environment.
-[How to Write Go Code](https://golang.org/doc/code.html) contains full instructions.
-When setup correctly, you should have a GOROOT and GOPATH set in the environment.
+SwarmKit is a Go 1.25 module. Build and test with Go Modules; dependencies are
+declared in `go.mod` and verified with `go.sum`. Neither the repository nor
+the build process uses a `vendor/` directory. Public modules are verified against
+Go's checksum database (`sum.golang.org`) and the committed `go.sum` files.
 
-After you set up the Go development environment, use `go get` to check out
-`swarmkit`:
+## Local build
 
-    go get -d github.com/moby/swarmkit/v2@latest
-
-This command installs the source repository into the `GOPATH`.
-
-It is not mandatory to use `go get` to checkout the SwarmKit project. However,
-for these instructions to work, you need to check out the project to the
-correct subdirectory of the `GOPATH`: `$GOPATH/src/github.com/moby/swarmkit`.
-
-### Repeatable Builds
-
-For the full development experience, one should `cd` into
-`$GOPATH/src/github.com/moby/swarmkit`. From there, the regular `go`
-commands, such as `go test`, should work per package (please see
-[Developing](#developing) if they don't work).
-
-Docker provides a `Makefile` as a convenience to support repeatable builds.
-`make setup` installs tools onto the `GOPATH` for use with developing
-`SwarmKit`:
-
-    make setup
-
-Once these commands are available in the `GOPATH`, run `make` to get a full
-build:
-
-    $ make
-    🐳 fmt
-    🐳 bin/swarmd
-    🐳 bin/swarmctl
-    🐳 bin/swarm-bench
-    🐳 bin/protoc-gen-gogoswarm
-    🐳 binaries
-    🐳 vet
-    🐳 lint
-    🐳 build
-    github.com/moby/swarmkit
-    github.com/moby/swarmkit/vendor/github.com/davecgh/go-spew/spew
-    github.com/moby/swarmkit/vendor/github.com/pmezard/go-difflib/difflib
-    github.com/moby/swarmkit/cmd/protoc-gen-gogoswarm
-    github.com/moby/swarmkit/cmd/swarm-bench
-    github.com/moby/swarmkit/cmd/swarmctl
-    github.com/moby/swarmkit/vendor/github.com/stretchr/testify/assert
-    github.com/moby/swarmkit/ca/testutils
-    github.com/moby/swarmkit/cmd/swarmd
-    github.com/moby/swarmkit/vendor/code.cloudfoundry.org/clock/fakeclock
-    github.com/moby/swarmkit/vendor/github.com/stretchr/testify/require
-    github.com/moby/swarmkit/manager/state/raft/testutils
-    github.com/moby/swarmkit/manager/testcluster
-    github.com/moby/swarmkit/protobuf/plugin/deepcopy/test
-    github.com/moby/swarmkit/protobuf/plugin/raftproxy/test
-    🐳 test
-    ?       github.com/moby/swarmkit      [no test files]
-    ?       github.com/moby/swarmkit      [no test files]
-    ok      github.com/moby/swarmkit/agent        2.264s
-    ok      github.com/moby/swarmkit/agent/exec   1.055s
-    ok      github.com/moby/swarmkit/agent/exec/container 1.094s
-    ?       github.com/moby/swarmkit/api  [no test files]
-    ?       github.com/moby/swarmkit/api/duration [no test files]
-    ?       github.com/moby/swarmkit/api/timestamp        [no test files]
-    ok      github.com/moby/swarmkit/ca   15.634s
-    ...
-    ok      github.com/moby/swarmkit/protobuf/plugin/raftproxy/test       1.084s
-    ok      github.com/moby/swarmkit/protobuf/ptypes      1.025s
-    ?       github.com/moby/swarmkit/version      [no test files]
-
-The above provides a repeatable build using the contents of the vendored
-`./vendor` directory. This includes formatting, vetting, linting, building,
-and testing. The binaries created will be available in `./bin`.
-
-Several `make` targets are provided for common tasks. Please see the `Makefile`
-for details.
-
-### Update vendored dependencies
-
-To update dependency you need just change `go.mod` file and run:
-```
-make go-mod-vendor
+```sh
+make module-validate
+make binaries
+make test swarmd-tests
 ```
 
-### Regenerating protobuf bindings
+The standard `Makefile` provides the `build`, `test`, `integration-tests`,
+`swarmd-tests` and `module-validate` targets. `module-validate` checks
+dependency integrity and ensures that the application and tooling Go modules are tidy without editing
+the manifests. CI builds each module with `GOWORK=off`, so the committed
+module manifests are the source of truth; the repository does not commit an
+alternative workspace dependency graph. The Makefile, development container,
+CI and debugger use proxy.golang.org without a direct-source fallback, verify
+public modules against sum.golang.org, and disable automatic toolchain downloads.
 
-This requires that you have [Protobuf 3.x or
-higher](https://developers.google.com/protocol-buffers/docs/downloads). Once
-that is installed the bindings can be regenerated with:
+## Protobuf generation
 
-```
-make setup
+The official `protoc` compiler and its standard schemas are provisioned only
+in the isolated Docker Buildx generation stage from version-pinned Debian
+packages and a dated Debian Snapshot archive. The snapshot is the only APT
+source in that stage. APT verifies signed release metadata and package hashes;
+only the expiration check for historical metadata is disabled. The project-owned Go plugin is compiled in that stage using Go
+Modules. Gogo and Raft schemas are resolved directly from their selected
+modules. The development image does not contain the Protobuf compiler.
+
+```sh
 make generate
+make generate-validate
 ```
 
-NB: As of version 3.0.0-7 the Debian `protobuf-compiler` package lacks
-a dependency on `libprotobuf-dev` which contains some standard proto
-definitions, be sure to install both packages. This is [Debian bug
-#842158](https://bugs.debian.org/842158).
+Generation exports only the API and plugin Go bindings required by consumers
+of the SwarmKit Go module. Go does not generate source files when importing a
+module, so these bindings remain versioned. The API descriptor, generator
+binary and generated test fixtures exist only inside the generation build.
+The validation target checks the distributed bindings and executes the
+generated deepcopy and raftproxy tests in that same isolated environment.
 
-### Build in a container instead of your local environment
+## Debugging
 
-You can also choose to use a container to build SwarmKit and run tests. Simply
-set the `DOCKER_SWARMKIT_USE_CONTAINER` environment variable to any value,
-export it, then run `make` targets as you would have done within your local
-environment.
+Delve is a pinned Go tool in `tools/debug/`. Run `hack/debug` with the test
+package and arguments; it builds Delve using the committed module manifests
+and starts a headless debugging session. Both Delve and its generated test
+executable are created in a temporary directory outside the checkout and
+removed when the session ends. No global binary is installed. The
+`debug-validate` CI job starts the real headless debugger, uses its own client
+to hit a breakpoint in an existing identity test, runs the test to completion
+and verifies that the temporary executables and checkout changes are absent.
 
-Additionally, if your OS is not Linux, you might want to set and export the
-`DOCKER_SWARMKIT_USE_DOCKER_SYNC` environment variable, which will make use of
-[docker-sync](https://github.com/EugenMayer/docker-sync) to sync the code to
-the container, instead of native mounted volumes.
+## Coverage
+
+The `coverage` and `coverage-integration` targets run the existing coverage
+tests with temporary profiles outside the source tree. The coverage percentages
+are reported in test output; profiles are removed when the targets exit.
+
+## Container build
+
+```sh
+DOCKER_SWARMKIT_USE_CONTAINER=1 make image
+DOCKER_SWARMKIT_USE_CONTAINER=1 make all
+```
+
+The development image is explicitly built using the digest-pinned base and
+Go build inputs. The Makefile tags it with the current Git
+revision; container runs never pull or build an image implicitly. Rebuild the
+image explicitly when editing its build inputs locally.
+
+The `docker-bake.hcl` validation targets run linting, module validation and
+generation validation. GolangCI-Lint is built from the pinned Go tool module
+in `tools/`, using its committed `go.mod` and `go.sum`. CI uses Go Modules for compilation and tests. The
+container runner mounts source directly through Docker; it does not require
+`docker-sync` or shell-built command strings.

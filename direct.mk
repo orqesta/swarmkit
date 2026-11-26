@@ -1,3 +1,15 @@
+SHELL := /bin/bash
+
+export GOWORK := off
+export GOFLAGS := -mod=readonly
+export GOTOOLCHAIN := local
+export GOPROXY := https://proxy.golang.org
+export GOSUMDB := sum.golang.org
+export GOPRIVATE :=
+export GONOPROXY := none
+export GONOSUMDB := none
+export GOINSECURE :=
+
 # Base path used to install.
 DESTDIR=/usr/local
 
@@ -12,23 +24,18 @@ PACKAGES = $(shell go list ./...)
 INTEGRATION_PACKAGE = $(shell go list ./integration)
 
 # Project binaries.
-COMMANDS=swarm-bench protoc-gen-gogoswarm
+COMMANDS=swarm-bench
 BINARIES=$(addprefix bin/,$(COMMANDS))
 SWARMD_COMMANDS=swarmd swarmctl swarm-rafttool
 SWARMD_BINARIES=$(addprefix swarmd/bin/,$(SWARMD_COMMANDS))
 
-VERSIONPKG := $(shell go list ./version)
+VERSIONPKG = $(shell go list ./version)
 GO_LDFLAGS=-ldflags "-X $(VERSIONPKG).Version=$(VERSION)"
 GO_TESTFLAGS=--timeout=20m $(RACE)
-
-GOBIN=$(shell go env GOPATH)/bin
 
 .DEFAULT_GOAL = all
 .PHONY: all
 all: check binaries test integration-tests swarmd-tests ## run check, build the binaries and run the tests
-
-.PHONY: ci
-ci: check binaries checkprotos coverage coverage-integration ## to be used by the CI
 
 .PHONY: AUTHORS
 AUTHORS: .mailmap .git/HEAD
@@ -39,40 +46,20 @@ version/version.go:
 	./version/version.sh > $@
 
 .PHONY: setup
-setup: ## install dependencies
-	@echo "🐳 $@"
-	# install golangci-lint to ./bin/golangci-lint
-	@curl -fsSL https://raw.githubusercontent.com/golangci/golangci-lint/v2.1.5/install.sh | sh -s v2.1.5
-	@go install tool github.com/containerd/protobuild
-
-.PHONY: generate
-generate: protos
-	@echo "🐳 $@"
-	@PATH=${ROOTDIR}/bin:${GOBIN}:${PATH} go generate -x ${PACKAGES}
-
-.PHONY: protos
-protos: bin/protoc-gen-gogoswarm ## generate protobuf
-	@echo "🐳 $@"
-	@PATH=${ROOTDIR}/bin:${GOBIN}:${PATH} protobuild ${PACKAGES}
-
-.PHONY: checkprotos
-checkprotos: generate ## check if protobufs needs to be generated again
-	@echo "🐳 $@"
-	@test -z "$$(git status --short | grep ".pb.go" | tee /dev/stderr)" || \
-		((git diff | cat) && \
-		(echo "👹 please run 'make generate' when making changes to proto files" && false))
+setup: ## download dependencies through Go Modules
+	@go mod download
 
 .PHONY: check
 check: fmt-proto
 check: ## Run various source code validation tools
 	@echo "🐳 $@"
-	@./bin/golangci-lint run
+	@go vet ./...
 
 .PHONY: fmt-proto
 fmt-proto:
-	@test -z "$$(find . -path ./vendor -prune -o ! -name timestamp.proto ! -name duration.proto -name '*.proto' -type f -exec grep -Hn -e "^ " {} \; | tee /dev/stderr)" || \
+	@test -z "$$(find . -name '*.proto' -type f -exec grep -Hn -e "^ " {} \; | tee /dev/stderr)" || \
 		(echo "👹 please indent proto files with tabs only" && false)
-	@test -z "$$(find . -path ./vendor -prune -o -name '*.proto' -type f -exec grep -Hn "Meta meta = " {} \; | grep -v '(gogoproto.nullable) = false' | tee /dev/stderr)" || \
+	@test -z "$$(find . -name '*.proto' -type f -exec grep -Hn "Meta meta = " {} \; | grep -v '(gogoproto.nullable) = false' | tee /dev/stderr)" || \
 		(echo "👹 meta fields in proto files must have option (gogoproto.nullable) = false" && false)
 
 .PHONY: build
@@ -128,34 +115,35 @@ uninstall:
 	@rm -f $(addprefix $(DESTDIR)/bin/,$(notdir $(BINARIES)))
 
 .PHONY: coverage
-coverage: ## generate coverprofiles from the unit tests
-	@echo "🐳 $@"
-	@( for pkg in $(filter-out ${INTEGRATION_PACKAGE},${PACKAGES}); do \
-		go test ${GO_TESTFLAGS} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="$$(go list -f "{{.Dir}}" $$pkg)/coverage.txt" -covermode=atomic $$pkg || exit; \
-	done )
+coverage: ## run unit coverage tests with temporary profiles
+	@set -eu; \
+		workdir=$$(mktemp -d /tmp/swarmkit-coverage.XXXXXXXX); \
+		trap 'rm -rf -- "$$workdir"' EXIT; \
+		trap 'exit 130' INT; trap 'exit 143' TERM; trap 'exit 129' HUP; \
+		for pkg in $(filter-out ${INTEGRATION_PACKAGE},${PACKAGES}); do \
+			go test ${GO_TESTFLAGS} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="$$workdir/coverage.out" -covermode=atomic "$$pkg"; \
+		done
 
 .PHONY: coverage-integration
-coverage-integration: ## generate coverprofiles from the integration tests
-	@echo "🐳 $@"
-	go test ${GO_TESTFLAGS} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="$$(go list -f "{{.Dir}}" ${INTEGRATION_PACKAGE})/coverage.txt" -covermode=atomic ${INTEGRATION_PACKAGE}
+coverage-integration: ## run integration coverage tests with a temporary profile
+	@set -eu; \
+		workdir=$$(mktemp -d /tmp/swarmkit-coverage.XXXXXXXX); \
+		trap 'rm -rf -- "$$workdir"' EXIT; \
+		trap 'exit 130' INT; trap 'exit 143' TERM; trap 'exit 129' HUP; \
+		go test ${GO_TESTFLAGS} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="$$workdir/coverage.out" -covermode=atomic ${INTEGRATION_PACKAGE}
 
 .PHONY: help
 help: ## this help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST) | sort
 
-.PHONY: dep-validate
-dep-validate: go-mod-vendor
-	@echo "+ $@"
-	@go mod tidy
-	@git diff --exit-code go.mod go.sum vendor || \
-		(echo >&2 "+ inconsistent dependencies! what you have in go.mod does not match with what you have in vendor" && false)
-
-.PHONY: go-mod-vendor
-go-mod-vendor:
-	@go mod tidy
-	@go mod vendor
-	@# ensure that key protobuf spec files are in vendor dir
-	@module=github.com/gogo/protobuf ; \
-		prefix=$$(go env GOMODCACHE)/$${module} ; \
-		version=$$(go list -m -f '{{.Version}}' $${module}) ; \
-		cp -a $${prefix}@$${version}/protobuf vendor/$${module}/ && chmod -R u+w vendor/$${module}
+.PHONY: module-validate
+module-validate: ## verify module integrity and module file consistency
+	@tracked_legacy=$$(git ls-files -- ':(glob)**/vendor/**' ':(glob)**/go.work' ':(glob)**/go.work.sum' 'api/api.pb.txt' ':(glob)protobuf/plugin/**/testdata/**/*.pb.go' ':(glob)protobuf/plugin/**/testdata/**/*pb_test.go') && test -z "$$tracked_legacy"
+	@git ls-files --error-unmatch go.mod go.sum swarmd/go.mod swarmd/go.sum tools/go.mod tools/go.sum tools/debug/go.mod tools/debug/go.sum >/dev/null
+	@go mod tidy -diff
+	@go mod download
+	@go mod verify
+	@cd swarmd && go mod tidy -diff && go mod download && go mod verify
+	@cd tools && go mod tidy -diff && go mod download && go mod verify
+	@cd tools/debug && go mod tidy -diff && go mod download && go mod verify
+	@git diff --exit-code HEAD -- go.mod go.sum swarmd/go.mod swarmd/go.sum tools/go.mod tools/go.sum tools/debug/go.mod tools/debug/go.sum

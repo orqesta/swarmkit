@@ -24,13 +24,11 @@ func main() {
 		vanity.TurnOnSizerAll,
 		vanity.TurnOffGoUnrecognizedAll,
 		vanity.TurnOffGoUnkeyedAll,
-		vanity.TurnOffGoUnrecognizedAll,
 		vanity.TurnOffGoSizecacheAll,
 		CustomNameID,
 	} {
 		vanity.ForEachFile(files, opt)
 	}
 
-	resp := command.Generate(req)
-	command.Write(resp)
+	command.Write(command.Generate(req))
 }

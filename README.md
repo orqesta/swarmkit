@@ -96,14 +96,13 @@ Some of *SwarmKit*'s main features are:
 
 Requirements:
 
--   Go 1.6 or higher
--   A [working golang](https://golang.org/doc/code.html) environment
--   [Protobuf 3.x or higher](https://developers.google.com/protocol-buffers/docs/downloads) to regenerate protocol buffer files (e.g. using `make generate`)
+-   Go 1.25 or later, installed locally
+-   Docker Buildx, only for isolated Protobuf generation and container builds
 
 *SwarmKit* is built in Go and leverages a standard project structure to work well with Go tooling.
 If you are new to Go, please see [BUILDING.md](BUILDING.md) for a more detailed guide.
 
-Once you have *SwarmKit* checked out in your `$GOPATH`, the `Makefile` can be used for common tasks.
+Clone the repository into any directory. The `Makefile` uses Go Modules and the committed `go.mod` and `go.sum` files.
 
 From the project root directory, run the following to build `swarmd` and `swarmctl`:
 
@@ -113,7 +112,7 @@ $ make binaries
 
 ## Test
 
-Before running tests for the first time, setup the tooling:
+Before running tests for the first time, download the Go module dependencies:
 
 ```sh
 $ make setup

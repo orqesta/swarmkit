@@ -1,5 +1,5 @@
 variable "IMAGE_NAME" {
-  default = "moby/swarmkit"
+  default = "orqesta/swarmkit:dev"
 }
 
 target "dev" {
@@ -12,7 +12,7 @@ group "default" {
 }
 
 group "validate" {
-  targets = ["lint", "vendor-validate", "generate-validate"]
+  targets = ["lint", "module-validate", "generate-validate"]
 }
 
 group "lint" {
@@ -29,14 +29,9 @@ target "fmt-proto" {
   output = ["type=cacheonly"]
 }
 
-target "vendor-validate" {
-  target = "vendor-validate"
+target "module-validate" {
+  target = "module-validate"
   output = ["type=cacheonly"]
-}
-
-target "vendor" {
-  target = "vendor-update"
-  output = ["."]
 }
 
 target "generate-validate" {

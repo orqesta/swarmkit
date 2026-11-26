@@ -26,7 +26,7 @@ import (
 	cfsigner "github.com/cloudflare/cfssl/signer"
 	"github.com/cloudflare/cfssl/signer/local"
 	"github.com/moby/swarmkit/v2/api"
-	"github.com/moby/swarmkit/v2/ca/pkcs8"
+	"github.com/moby/swarmkit/v2/ca/keyutils"
 	"github.com/moby/swarmkit/v2/connectionbroker"
 	"github.com/moby/swarmkit/v2/ioutils"
 	"github.com/opencontainers/go-digest"
@@ -919,7 +919,7 @@ func GenerateNewCSR() ([]byte, []byte, error) {
 		return nil, nil, err
 	}
 
-	key, err = pkcs8.ConvertECPrivateKeyPEM(key)
+	key, err = keyutils.ECToPKCS8PEM(key)
 	return csr, key, err
 }
 

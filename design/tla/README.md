@@ -1,14 +1,14 @@
-This directory contains documentation for SwarmKit using [TLA+][] notation.
+# TLA+ design specifications
 
-Run `make pdfs` to render these documents as PDF files.
-The best one to start with is `SwarmKit.pdf`, which introduces the TLA+ notation
-and describes the overall components of SwarmKit.
+This directory retains the formal specifications and models inherited from
+SwarmKit, including the overall model and worker implementation. They are
+design documentation, not inputs to the Go build or CI.
 
-The specifications can also be executed by the TLC model checker to help find
-mistakes. Use `make check` to run the checks.
+The inherited Makefile that acquired an unversioned third-party TLA+ container
+has been removed. The repository does not install or provision TLA+ tooling.
+The specifications may be inspected independently with an existing TLA+
+environment; formal model verification is outside the Go build and validation
+pipeline.
 
-If you want to edit these specifications, you will probably want to use the [TLA+ Toolbox][],
-which provides a GUI.
-
-[TLA+]: https://en.wikipedia.org/wiki/TLA%2B
-[TLA+ Toolbox]: http://lamport.azurewebsites.net/tla/toolbox.html
+See the [TLA+ project](https://github.com/tlaplus/tlaplus) for the specification
+language and its tooling.

@@ -1,115 +1,69 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1@sha256:572cebbc2b15e6f84c077742952674889cb63cd5e9b80abdffcbe587b6f19183
 
-ARG GO_VERSION=1.25
-ARG BASE_DEBIAN_DISTRO="bookworm"
-ARG GOLANG_IMAGE="golang:${GO_VERSION}-${BASE_DEBIAN_DISTRO}"
+FROM --platform=$BUILDPLATFORM golang:1.25-bookworm@sha256:3b4a11519ad929d1e1d261a12cff056f0c85b735253d7d861346b9c6f8b36437 AS gobase
+ENV GOWORK=off GOFLAGS=-mod=readonly GOTOOLCHAIN=local \
+    GOPROXY=https://proxy.golang.org GOSUMDB=sum.golang.org \
+    GOPRIVATE="" GONOPROXY=none GONOSUMDB=none GOINSECURE=""
+WORKDIR /workspace/swarmkit
+RUN git config --global --add safe.directory /workspace/swarmkit
 
-ARG PROTOC_VERSION=3.14.0
-ARG GOLANGCI_LINT_VERSION=v2.12.2
-
-# gobase
-FROM --platform=$BUILDPLATFORM ${GOLANG_IMAGE} AS gobase
-RUN apt-get update && apt-get install -y --no-install-recommends git make rsync
-WORKDIR /go/src/github.com/docker/swarmkit
-RUN git config --global --add safe.directory /go/src/github.com/docker/swarmkit
-
-FROM gobase AS packages
-RUN --mount=target=. \
-  mkdir -p /tmp/packages && \
-  echo $(go list ./...) | tee /tmp/packages/packages; \
-  echo $(go list ./integration) | tee /tmp/packages/integration-packages;
-
-FROM gobase AS vendored
-RUN --mount=target=.,rw \
-    --mount=target=/go/pkg/mod,type=cache <<EOT
-  set -e
-  make go-mod-vendor
-  mkdir /out
-  cp -r go.mod go.sum vendor /out
-EOT
-
-FROM scratch AS vendor-update
-COPY --from=vendored /out /
-
-FROM gobase AS vendor-validate
-RUN --mount=type=bind,target=.,rw \
-    --mount=from=vendored,source=/out,target=/out <<EOT
-  set -e
-  git add -A
-  rm -rf vendor
-  cp -rf /out/* .
-  if [ -n "$(git status --porcelain -- go.mod go.sum vendor)" ]; then
-    echo >&2 'ERROR: Vendor result differs. Please vendor your package with "make go-mod-vendor"'
-    git status --porcelain -- go.mod go.sum vendor
-    exit 1
-  fi
-EOT
-
-FROM gobase AS protoc-gen-gogoswarm
-RUN --mount=type=bind,target=.,rw \
-    --mount=type=cache,target=/root/.cache \
-    make bin/protoc-gen-gogoswarm && mv bin/protoc-gen-gogoswarm /usr/local/bin/
-
-FROM gobase AS protobuild
+FROM gobase AS module-validate
 RUN --mount=type=bind,target=. \
-    --mount=type=cache,target=/root/.cache \
-    go install tool github.com/containerd/protobuild
+    --mount=type=cache,target=/go/pkg/mod \
+    make --file=direct.mk module-validate
 
+# protoc is a build compiler provided by the base distribution.
+# Go dependencies and the generator plugin remain managed through Go Modules.
 FROM gobase AS generate-base
-RUN apt-get --no-install-recommends install -y unzip
-ARG PROTOC_VERSION
-ARG TARGETOS
-ARG TARGETARCH
-RUN <<EOT
-  set -e
-  arch=$(echo $TARGETARCH | sed -e s/amd64/x86_64/ -e s/arm64/aarch_64/)
-  wget -q https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-${TARGETOS}-${arch}.zip
-  unzip protoc-${PROTOC_VERSION}-${TARGETOS}-${arch}.zip -d /usr/local
-EOT
+RUN rm -f /etc/apt/sources.list /etc/apt/sources.list.d/*
+COPY build/debian-bookworm.sources /etc/apt/sources.list.d/debian-bookworm.sources
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    protobuf-compiler=3.21.12-3+deb12u1 \
+    libprotobuf-dev=3.21.12-3+deb12u1 \
+    libprotobuf32=3.21.12-3+deb12u1 \
+    libprotobuf-lite32=3.21.12-3+deb12u1 \
+    libprotoc32=3.21.12-3+deb12u1 \
+    zlib1g-dev=1:1.2.13.dfsg-1 \
+    && rm -rf /var/lib/apt/lists/*
 
 FROM generate-base AS generate-build
-RUN --mount=type=bind,target=.,rw \
-    --mount=from=packages,source=/tmp/packages,target=/tmp/packages \
-    --mount=from=protobuild,source=/go/bin/protobuild,target=/usr/bin/protobuild \
-    --mount=from=protoc-gen-gogoswarm,source=/usr/local/bin/protoc-gen-gogoswarm,target=/usr/bin/protoc-gen-gogoswarm <<EOT
-  set -ex
-  protobuild $(cat /tmp/packages/packages)
-  go generate -mod=vendor -x $(cat /tmp/packages/packages)
-  mkdir /out
-  git ls-files -m --others -- ':!vendor' '**/*.pb.go' | tar -cf - --files-from - | tar -C /out -xf -
-EOT
+COPY . .
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache \
+    make --file=protobuf.mk generate
+
+FROM generate-build AS generate-export
+RUN mkdir /out && cp --parents api/*.pb.go protobuf/plugin/plugin.pb.go /out
 
 FROM scratch AS generate-update
-COPY --from=generate-build /out /
+COPY --from=generate-export /out /
 
-FROM gobase AS generate-validate
-RUN --mount=type=bind,target=.,rw \
-    --mount=type=bind,from=generate-build,source=/out,target=/generated <<EOT
-  set -e
-  git add -A
-  if [ "$(ls -A /generated)" ]; then
-    cp -rf /generated/* .
-  fi
-  diff=$(git status --porcelain -- ':!vendor' '**/*.pb.go')
-  if [ -n "$diff" ]; then
-    echo >&2 'ERROR: The result of "go generate" differs. Please update with "make generate"'
-    echo "$diff"
+FROM generate-build AS generate-validate
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache <<EOT
+  set -eu
+  changes=$(git status --porcelain --untracked-files=all -- 'api/*.pb.go' 'protobuf/plugin/plugin.pb.go')
+  if [ -n "$changes" ]; then
+    printf '%s\n' "$changes" >&2
+    git --no-pager diff -- 'api/*.pb.go' 'protobuf/plugin/plugin.pb.go'
     exit 1
   fi
+  test -s protobuf/plugin/deepcopy/testdata/test/deepcopypb_test.go
+  go test ./protobuf/plugin/deepcopy/testdata/test ./protobuf/plugin/raftproxy/testdata/test
 EOT
 
-FROM golangci/golangci-lint:${GOLANGCI_LINT_VERSION} AS golangci-lint
 FROM gobase AS lint
-RUN apt-get install -y --no-install-recommends libgcc-11-dev libc6-dev
 RUN --mount=type=bind,target=. \
     --mount=type=cache,target=/root/.cache \
-    --mount=from=golangci-lint,source=/usr/bin/golangci-lint,target=/usr/bin/golangci-lint <<EOT
+    --mount=type=cache,target=/go/pkg/mod \
+    <<EOT
   set -e
+  go -C tools build -o /usr/local/bin/golangci-lint github.com/golangci/golangci-lint/v2/cmd/golangci-lint
   config=$(pwd)/.golangci.yml
   golangci-lint run --config "$config" ./...
   (
     cd swarmd
-    GOWORK=off golangci-lint run --config "$config" ./...
+    golangci-lint run --config "$config" ./...
   )
 EOT
 
@@ -117,16 +71,9 @@ FROM gobase AS fmt-proto
 RUN --mount=type=bind,target=. \
     make fmt-proto
 
-# use generate-base to have protoc available
-FROM generate-base
-ENV GO111MODULE=on
-# install the dependencies from `make setup`
-# we only copy `direct.mk` to avoid busting the cache too easily
+FROM gobase
 COPY direct.mk .
 COPY go.* .
 RUN make --file=direct.mk setup
-# now we can copy the rest
 COPY . .
-# default to just `make`. If you want to change the default command, change the
-# default make command, not this command.
 CMD ["make"]

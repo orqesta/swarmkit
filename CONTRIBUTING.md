@@ -176,7 +176,7 @@ feature branch to update your pull request rather than `merge master`.
 Before you make a pull request, squash your commits into logical units of work
 using `git rebase -i` and `git push -f`. A logical unit of work is a consistent
 set of patches that should be reviewed together: for example, upgrading the
-version of a vendored dependency and taking advantage of its now available new
+version of a Go module dependency and taking advantage of its now available new
 feature constitute two separate units of work. Implementing a new function and
 calling it in another file constitute a single logical unit of work. The very
 high majority of submissions should have a single commit, so if in doubt: squash
@@ -354,8 +354,7 @@ mind when nudging others to comply.
 The rules:
 
 1. All code should be formatted with `gofmt -s`.
-2. All code should pass the default levels of
-   [`golint`](https://github.com/golang/lint).
+2. All code should pass `DOCKER_SWARMKIT_USE_CONTAINER=1 make lint`.
 3. All code should follow the guidelines covered in [Effective
    Go](http://golang.org/doc/effective_go.html) and [Go Code Review
    Comments](https://github.com/golang/go/wiki/CodeReviewComments).
