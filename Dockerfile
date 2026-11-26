@@ -46,6 +46,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     git --no-pager diff -- 'api/*.pb.go' 'protobuf/plugin/plugin.pb.go'
     exit 1
   fi
+  test -s protobuf/plugin/deepcopy/testdata/test/deepcopypb_test.go
   go test ./protobuf/plugin/deepcopy/testdata/test ./protobuf/plugin/raftproxy/testdata/test
 EOT
 
