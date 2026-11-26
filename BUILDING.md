@@ -26,7 +26,9 @@ public modules against sum.golang.org, and disable automatic toolchain downloads
 
 The official `protoc` compiler and its standard schemas are provisioned only
 in the isolated Docker Buildx generation stage from version-pinned Debian
-packages. The project-owned Go plugin is compiled in that stage using Go
+packages and a dated Debian Snapshot archive. The snapshot is the only APT
+source in that stage. APT verifies signed release metadata and package hashes;
+only the expiration check for historical metadata is disabled. The project-owned Go plugin is compiled in that stage using Go
 Modules. Gogo and Raft schemas are resolved directly from their selected
 modules. The development image does not contain the Protobuf compiler.
 
@@ -46,7 +48,15 @@ generated deepcopy and raftproxy tests in that same isolated environment.
 
 Delve is a pinned Go tool in `tools/debug/`. Run `hack/debug` with the test
 package and arguments; it builds Delve using the committed module manifests
-and starts a headless debugging session without installing a global binary.
+and starts a headless debugging session. Both Delve and its generated test
+executable are created in a temporary directory outside the checkout and
+removed when the session ends. No global binary is installed.
+
+## Coverage
+
+The `coverage` and `coverage-integration` targets run the existing coverage
+tests with temporary profiles outside the source tree. The coverage percentages
+are reported in test output; profiles are removed when the targets exit.
 
 ## Container build
 

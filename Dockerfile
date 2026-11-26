@@ -15,6 +15,8 @@ RUN --mount=type=bind,target=. \
 # protoc is a build compiler provided by the base distribution.
 # Go dependencies and the generator plugin remain managed through Go Modules.
 FROM gobase AS generate-base
+RUN rm -f /etc/apt/sources.list /etc/apt/sources.list.d/*
+COPY build/debian-bookworm.sources /etc/apt/sources.list.d/debian-bookworm.sources
 RUN apt-get update && apt-get install -y --no-install-recommends \
     protobuf-compiler=3.21.12-3+deb12u1 \
     libprotobuf-dev=3.21.12-3+deb12u1 \

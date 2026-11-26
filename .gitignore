@@ -29,6 +29,4 @@ bin/
 swarmkitstate
 bin/swarmkitstate
 
-# ignore code coverage output
-*coverage.txt
 

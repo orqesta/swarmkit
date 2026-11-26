@@ -101,7 +101,7 @@ binaries: $(BINARIES) $(SWARMD_BINARIES) ## build binaries
 .PHONY: clean
 clean: ## clean up binaries
 	@echo "🐳 $@"
-	@rm -f $(BINARIES) $(SWARMD_BINARIES) bin/dlv
+	@rm -f $(BINARIES) $(SWARMD_BINARIES)
 
 .PHONY: install
 install: $(BINARIES) $(SWARMD_BINARIES) ## install binaries
@@ -115,16 +115,22 @@ uninstall:
 	@rm -f $(addprefix $(DESTDIR)/bin/,$(notdir $(BINARIES)))
 
 .PHONY: coverage
-coverage: ## generate coverprofiles from the unit tests
-	@echo "🐳 $@"
-	@( for pkg in $(filter-out ${INTEGRATION_PACKAGE},${PACKAGES}); do \
-		go test ${GO_TESTFLAGS} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="$$(go list -f "{{.Dir}}" $$pkg)/coverage.txt" -covermode=atomic $$pkg || exit; \
-	done )
+coverage: ## run unit coverage tests with temporary profiles
+	@set -eu; \
+		workdir=$$(mktemp -d /tmp/swarmkit-coverage.XXXXXXXX); \
+		trap 'rm -rf -- "$$workdir"' EXIT; \
+		trap 'exit 130' INT; trap 'exit 143' TERM; trap 'exit 129' HUP; \
+		for pkg in $(filter-out ${INTEGRATION_PACKAGE},${PACKAGES}); do \
+			go test ${GO_TESTFLAGS} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="$$workdir/coverage.out" -covermode=atomic "$$pkg"; \
+		done
 
 .PHONY: coverage-integration
-coverage-integration: ## generate coverprofiles from the integration tests
-	@echo "🐳 $@"
-	go test ${GO_TESTFLAGS} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="$$(go list -f "{{.Dir}}" ${INTEGRATION_PACKAGE})/coverage.txt" -covermode=atomic ${INTEGRATION_PACKAGE}
+coverage-integration: ## run integration coverage tests with a temporary profile
+	@set -eu; \
+		workdir=$$(mktemp -d /tmp/swarmkit-coverage.XXXXXXXX); \
+		trap 'rm -rf -- "$$workdir"' EXIT; \
+		trap 'exit 130' INT; trap 'exit 143' TERM; trap 'exit 129' HUP; \
+		go test ${GO_TESTFLAGS} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="$$workdir/coverage.out" -covermode=atomic ${INTEGRATION_PACKAGE}
 
 .PHONY: help
 help: ## this help
