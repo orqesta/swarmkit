@@ -7,7 +7,7 @@ if [ "$#" -eq 0 ]; then
 fi
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-workdir=$(mktemp -d /tmp/swarmkit-debug.XXXXXXXX)
+workdir=$(mktemp -d "${TMPDIR:-/tmp}/swarmkit-debug.XXXXXXXX")
 trap 'rm -rf -- "$workdir"' EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM

@@ -50,7 +50,10 @@ Delve is a pinned Go tool in `tools/debug/`. Run `hack/debug` with the test
 package and arguments; it builds Delve using the committed module manifests
 and starts a headless debugging session. Both Delve and its generated test
 executable are created in a temporary directory outside the checkout and
-removed when the session ends. No global binary is installed.
+removed when the session ends. No global binary is installed. The
+`debug-validate` CI job starts the real headless debugger, uses its own client
+to hit a breakpoint in an existing identity test, runs the test to completion
+and verifies that the temporary executables and checkout changes are absent.
 
 ## Coverage
 
